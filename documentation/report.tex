@@ -187,18 +187,24 @@ Per l'esecuzione del progetto è stato utilizzato un ambiente distribuito tramit
 
 \subsection{Configurazione del Cluster}
 
+Il cluster è basato su un'\textbf{immagine Docker personalizzata} (\texttt{hadoop-new}), costruita tramite Dockerfile a partire da Ubuntu con Java 8 e Hadoop 3.3.6. La stessa immagine viene utilizzata per tutti i nodi.
+
 La configurazione si compone dei seguenti container:
 
 \begin{itemize}
-    \item \textbf{namenode}: nodo master per HDFS e gestione del filesystem distribuito
-    \item \textbf{datanode}: nodo worker per lo storage dei dati
-    \item \textbf{resourcemanager}: gestore delle risorse YARN
-    \item \textbf{spark-master}: nodo master per l'esecuzione di job Spark
+    \item \textbf{master}: nodo master che esegue NameNode, SecondaryNameNode e ResourceManager
+    \item \textbf{slave1}: nodo worker con DataNode e NodeManager
+    \item \textbf{slave2}: nodo worker con DataNode e NodeManager
+    \item \textbf{slave3}: nodo worker con DataNode e NodeManager
 \end{itemize}
+
+I nodi comunicano tra loro tramite SSH (configurato senza password) su una rete bridge Docker (\texttt{hadoop\_network}). Il file \texttt{config/core-site.xml} configura il filesystem HDFS su \texttt{hdfs://master:54310}, mentre \texttt{config/workers} elenca i tre nodi slave. Il fattore di replica HDFS è impostato a 2 in \texttt{config/hdfs-site.xml}.
+
+Dopo l'avvio dei container, è necessario formattare HDFS (\texttt{hdfs namenode -format}) e avviare manualmente i servizi con \texttt{start-dfs.sh} e \texttt{start-yarn.sh} dal container master.
 
 \subsection{Volumi e Percorsi}
 
-Il volume \texttt{hddata} viene montato nel container come \texttt{/submit}, contenendo:
+Il volume \texttt{hddata} viene montato nel container master come \texttt{/data}, contenendo:
 \begin{itemize}
     \item \texttt{dataset/}: file CSV di input
     \item \texttt{src/mapreduce/}: codice sorgente MapReduce
@@ -554,9 +560,9 @@ I dati mostrano che i clienti più "anziani" (2012) hanno un conversion rate leg
 \subsection{MapReduce}
 
 \begin{lstlisting}[language=bash,caption=Compilazione MapReduce]
-# Accedere al container namenode
-docker exec -it namenode bash
-cd /submit
+# Accedere al container master
+docker exec -it master bash
+cd /data
 
 # Compilazione
 mkdir -p build
@@ -570,9 +576,9 @@ jar -cvf CustomerSpending.jar -C build .
 \subsection{Spark}
 
 \begin{lstlisting}[language=bash,caption=Compilazione Spark]
-# Nel container namenode
+# Nel container master
 mkdir -p build_spark
-javac -encoding UTF-8 -cp "/submit/spark_libs/*" \
+javac -encoding UTF-8 -cp "/data/spark_libs/*" \
     -d build_spark $(find src/spark -name "*.java")
 
 # Creazione JAR
@@ -601,14 +607,16 @@ hdfs dfs -cat /output_mapreduce/part-r-00000
 
 \begin{lstlisting}[language=bash,caption=Esecuzione job Spark]
 # Costruisci classpath
-SPARK_CP=$(echo /submit/spark_libs/*.jar | tr ' ' ':')
+SPARK_CP=$(echo /data/spark_libs/*.jar | tr ' ' ':')
 
 # Esecuzione
-java -cp "/submit/CustomerSpark.jar:$SPARK_CP" \
+java -cp "/data/CustomerSpark.jar:$SPARK_CP" \
     -Dspark.master=local[*] \
+    -Dspark.app.name=WebConversionRate \
+    -Dspark.hadoop.fs.defaultFS=hdfs://master:54310 \
     spark.SparkDriver \
-    hdfs://namenode:8020/input/customer.csv \
-    hdfs://namenode:8020/output_spark
+    hdfs://master:54310/input/customer.csv \
+    hdfs://master:54310/output_spark
 
 # Visualizzazione risultati
 hdfs dfs -cat /output_spark/part-*
