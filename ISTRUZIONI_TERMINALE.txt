@@ -1,0 +1,152 @@
+================================================================================
+PROGETTO BIG DATA 2023/2024 - ISTRUZIONI TERMINALE
+================================================================================
+
+Studenti:
+  - Francesco Quagliuolo (0622702412) - f.quagliuolo@studenti.unisa.it
+  - Giuseppe Alfonso Mangiola (0622702372) - g.mangiola1@studenti.unisa.it
+Canale: IZ
+
+================================================================================
+PREREQUISITI
+================================================================================
+
+1. Avviare il cluster Docker:
+   cd /home/quaily/progetto_bigdata
+   docker-compose up -d
+
+2. Verificare che i container siano attivi:
+   docker ps
+   
+   Dovresti vedere: namenode, datanode, resourcemanager, spark-master
+
+================================================================================
+ESERCIZIO 1 - HADOOP MAPREDUCE
+================================================================================
+
+IMPORTANTE: Usare il container NAMENODE per MapReduce!
+
+--- METODO 1: CON SCRIPT AUTOMATICO ---
+
+docker exec -it namenode bash
+cd /submit
+chmod +x scripts/run_mapreduce.sh
+./scripts/run_mapreduce.sh
+
+
+--- METODO 2: COMANDI MANUALI ---
+
+# Accedere al container
+docker exec -it namenode bash
+cd /submit
+
+# Compilare
+mkdir -p build
+javac -encoding UTF-8 -cp "$(hadoop classpath)" -d build $(find src/mapreduce -name "*.java")
+
+# Creare JAR
+jar -cvf CustomerSpending.jar -C build .
+
+# Caricare dataset su HDFS
+hdfs dfs -mkdir -p /input
+hdfs dfs -put -f dataset/customer.csv /input/
+
+# Pulire output precedenti
+hdfs dfs -rm -r -f /output_mapreduce
+hdfs dfs -rm -r -f /tmp/customer_temp
+
+# Eseguire il job
+hadoop jar CustomerSpending.jar mapreduce.CustomerDriver /input/customer.csv /output_mapreduce
+
+# Visualizzare risultati
+hdfs dfs -cat /output_mapreduce/part-r-00000
+
+# Scaricare output in locale
+mkdir -p output_mapreduce
+hdfs dfs -get /output_mapreduce/* output_mapreduce/
+
+
+================================================================================
+ESERCIZIO 2 - APACHE SPARK
+================================================================================
+
+IMPORTANTE: Usare il container SPARK-MASTER per Spark!
+
+--- METODO 1: CON SCRIPT AUTOMATICO ---
+
+docker exec -it spark-master bash
+cd /submit
+chmod +x scripts/run_spark_local.sh
+./scripts/run_spark_local.sh
+
+
+--- METODO 2: COMANDI MANUALI ---
+
+# Accedere al container
+docker exec -it spark-master bash
+cd /submit
+
+# Compilare
+mkdir -p build_spark
+javac -encoding UTF-8 -cp "/spark/jars/*" -d build_spark $(find src/spark -name "*.java")
+
+# Creare JAR
+jar -cvf CustomerSpark.jar -C build_spark .
+
+# Eseguire Spark (modalita locale)
+/spark/bin/spark-submit \
+    --class spark.SparkDriver \
+    --master local[*] \
+    --conf spark.hadoop.fs.defaultFS=hdfs://namenode:8020 \
+    CustomerSpark.jar \
+    hdfs://namenode:8020/input/customer.csv \
+    hdfs://namenode:8020/output_spark
+
+# Per vedere i risultati, tornare nel namenode:
+exit
+docker exec -it namenode bash
+hdfs dfs -cat /output_spark/part-*
+
+
+================================================================================
+VISUALIZZAZIONE RISULTATI
+================================================================================
+
+Dal container NAMENODE:
+
+# Risultati MapReduce
+hdfs dfs -cat /output_mapreduce/part-r-00000
+
+# Risultati Spark
+hdfs dfs -cat /output_spark/part-*
+
+
+================================================================================
+PULIZIA E SPEGNIMENTO
+================================================================================
+
+# Uscire dal container
+exit
+
+# Spegnere il cluster Docker
+cd /home/quaily/progetto_bigdata
+docker-compose down
+
+
+================================================================================
+RISOLUZIONE PROBLEMI
+================================================================================
+
+1. "No such file or directory" per /data
+   -> Usare /submit invece di /data
+
+2. "unmappable character for encoding ASCII"
+   -> Aggiungere -encoding UTF-8 al comando javac
+
+3. "No such container: master"
+   -> Il container si chiama spark-master o namenode
+
+4. Errore connessione HDFS da Spark
+   -> Usare hdfs://namenode:8020/ come prefisso nei percorsi
+
+================================================================================

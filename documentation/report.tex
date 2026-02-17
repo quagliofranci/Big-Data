@@ -1,0 +1,687 @@
+\documentclass[a4paper, 12pt, oneside]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[italian]{babel}
+\usepackage[margin=2.5cm]{geometry}
+\linespread{1.3}
+\usepackage{float}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{array}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{tcolorbox}
+
+% Configurazione listings per codice Java
+\lstset{
+    language=Java,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    stringstyle=\color{red},
+    commentstyle=\color{gray}\itshape,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=8pt,
+    backgroundcolor=\color{gray!10},
+    showspaces=false,
+    showstringspaces=false,
+    frame=single,
+    rulecolor=\color{black},
+    tabsize=4,
+    breaklines=true,
+    breakatwhitespace=true,
+    captionpos=b
+}
+
+% Configurazione header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textbf{Big Data 2023/2024}}
+\fancyhead[R]{\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+\renewcommand{\contentsname}{Indice}
+\renewcommand{\chaptername}{Capitolo}
+
+\begin{document}
+
+%=============================================================================
+% FRONTESPIZIO
+%=============================================================================
+\begin{titlepage}
+    \begin{center}
+        \vspace*{1cm}
+        
+        \LARGE{\textbf{UNIVERSITÀ DEGLI STUDI DI SALERNO}}\\
+        \vspace{3mm}
+        \large{Dipartimento di Ingegneria dell'Informazione ed Elettrica\\e Matematica Applicata (DIEM)}\\
+        
+        \vspace{1.5cm}
+        
+        \large{Corso di Laurea Magistrale in Ingegneria Informatica}\\
+        
+        \vspace{2cm}
+        
+        \rule{\textwidth}{1pt}\\
+        \vspace{5mm}
+        {\Huge\textbf{Progetto Big Data}}\\
+        \vspace{3mm}
+        {\LARGE Hadoop MapReduce \& Apache Spark}\\
+        \vspace{3mm}
+        {\Large Analisi del dataset Customer}\\
+        \vspace{5mm}
+        \rule{\textwidth}{1pt}\\
+        
+        \vspace{2cm}
+        
+        {\Large\textbf{Report Finale}}\\
+        
+        \vspace{2cm}
+        
+        \begin{tabular}{|c|c|c|c|}
+            \hline
+            \textbf{Nome} & \textbf{Cognome} & \textbf{Matricola} & \textbf{Email} \\
+            \hline
+            Francesco & Quagliuolo & 0622702412 & f.quagliuolo@studenti.unisa.it \\
+            \hline
+            Giuseppe Alfonso & Mangiola & 0622702372 & g.mangiola1@studenti.unisa.it \\
+            \hline
+        \end{tabular}
+        
+        \vspace{1cm}
+        
+        \textbf{Canale:} IZ
+        
+        \vfill
+        
+        {\large\textbf{Anno Accademico 2023/2024}}
+        
+    \end{center}
+\end{titlepage}
+
+%=============================================================================
+% INDICE
+%=============================================================================
+\tableofcontents
+\newpage
+
+%=============================================================================
+% CAPITOLO 1: INTRODUZIONE
+%=============================================================================
+\chapter{Introduzione}
+
+\section{Obiettivo del Progetto}
+
+Il presente progetto ha come obiettivo l'analisi di un dataset reale mediante l'utilizzo di due framework distribuiti per il processing di Big Data:
+
+\begin{itemize}
+    \item \textbf{Apache Hadoop MapReduce}: framework per l'elaborazione distribuita batch di grandi volumi di dati
+    \item \textbf{Apache Spark}: framework per l'elaborazione distribuita in-memory, più veloce e versatile
+\end{itemize}
+
+La traccia assegnata prevede due esercizi distinti:
+
+\begin{enumerate}
+    \item \textbf{Esercizio 1 (Hadoop MapReduce)}: Calcolare la \textbf{spesa totale} dei clienti raggruppata per \textbf{livello di istruzione} (Education) e produrre una classifica ordinata in modo decrescente.
+    
+    \item \textbf{Esercizio 2 (Apache Spark)}: Analizzare il \textbf{Web Conversion Rate} (tasso di conversione web) dei clienti che hanno risposto positivamente alle campagne marketing, raggruppati per \textbf{anno di iscrizione}.
+\end{enumerate}
+
+%-----------------------------------------------------------------------------
+\section{Dataset: customer.csv}
+
+Il dataset fornito, denominato \texttt{customer.csv}, contiene informazioni relative a \textbf{2240 clienti} di un'azienda, con dati demografici, comportamentali e di acquisto.
+
+\subsection{Struttura del Dataset}
+
+Il file è composto da \textbf{29 colonne}. Le principali utilizzate nel progetto sono:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|l|p{7cm}|}
+        \hline
+        \textbf{Indice} & \textbf{Colonna} & \textbf{Descrizione} \\
+        \hline
+        0 & ID & Identificativo univoco del cliente \\
+        \hline
+        1 & Year\_Birth & Anno di nascita \\
+        \hline
+        2 & Education & Livello di istruzione (Basic, Graduation, Master, PhD, 2n Cycle) \\
+        \hline
+        7 & Dt\_Customer & Data di iscrizione (formato dd-MM-yyyy) \\
+        \hline
+        9 & MntWines & Spesa in vini \\
+        \hline
+        10 & MntFruits & Spesa in frutta \\
+        \hline
+        11 & MntMeatProducts & Spesa in carne \\
+        \hline
+        12 & MntFishProducts & Spesa in pesce \\
+        \hline
+        13 & MntSweetProducts & Spesa in dolci \\
+        \hline
+        14 & MntGoldProds & Spesa in prodotti premium \\
+        \hline
+        16 & NumWebPurchases & Numero di acquisti via web \\
+        \hline
+        19 & NumWebVisitsMonth & Numero di visite web mensili \\
+        \hline
+        28 & Response & Risposta all'ultima campagna (1=Sì, 0=No) \\
+        \hline
+    \end{tabular}
+    \caption{Colonne principali del dataset customer.csv}
+    \label{tab:dataset}
+\end{table}
+
+Il file è in formato CSV con separatore virgola (\texttt{,}). La prima riga contiene l'intestazione (header) che viene ignorata durante l'elaborazione.
+
+%-----------------------------------------------------------------------------
+\section{Ambiente Docker}
+
+Per l'esecuzione del progetto è stato utilizzato un ambiente distribuito tramite \textbf{Docker}, che consente di simulare un cluster Hadoop/Spark in locale.
+
+\subsection{Configurazione del Cluster}
+
+La configurazione si compone dei seguenti container:
+
+\begin{itemize}
+    \item \textbf{namenode}: nodo master per HDFS e gestione del filesystem distribuito
+    \item \textbf{datanode}: nodo worker per lo storage dei dati
+    \item \textbf{resourcemanager}: gestore delle risorse YARN
+    \item \textbf{spark-master}: nodo master per l'esecuzione di job Spark
+\end{itemize}
+
+\subsection{Volumi e Percorsi}
+
+Il volume \texttt{hddata} viene montato nel container come \texttt{/submit}, contenendo:
+\begin{itemize}
+    \item \texttt{dataset/}: file CSV di input
+    \item \texttt{src/mapreduce/}: codice sorgente MapReduce
+    \item \texttt{src/spark/}: codice sorgente Spark
+    \item \texttt{output\_mapreduce/}: risultati MapReduce
+    \item \texttt{output\_spark/}: risultati Spark
+    \item \texttt{scripts/}: script di automazione
+\end{itemize}
+
+%=============================================================================
+% CAPITOLO 2: ESERCIZIO 1 - MAPREDUCE
+%=============================================================================
+\chapter{Esercizio 1 -- Hadoop MapReduce}
+
+\section{Problema Affrontato}
+
+L'obiettivo dell'esercizio è calcolare la \textbf{spesa totale} dei clienti per ogni \textbf{livello di istruzione} e produrre una \textbf{classifica ordinata in modo decrescente} per spesa.
+
+\subsection{Definizione della Spesa Totale}
+
+Per ogni cliente, la spesa totale è calcolata come la somma delle seguenti colonne:
+
+\begin{equation}
+    \text{SpesaTotale} = \text{MntWines} + \text{MntFruits} + \text{MntMeatProducts} + \text{MntFishProducts} + \text{MntSweetProducts} + \text{MntGoldProds}
+\end{equation}
+
+Questa somma viene poi aggregata per livello di istruzione (Education).
+
+%-----------------------------------------------------------------------------
+\section{Soluzione Proposta}
+
+La soluzione prevede una \textbf{pipeline di 2 Job MapReduce} in sequenza, orchestrati dalla classe \texttt{CustomerDriver}.
+
+\begin{tcolorbox}[colback=blue!5,colframe=blue!40!black,title=Pattern Utilizzati]
+\begin{itemize}
+    \item \textbf{Summarization Pattern}: aggregazione con Combiner per ottimizzare il trasferimento dati
+    \item \textbf{Value-to-Key Conversion}: per ottenere l'ordinamento decrescente
+    \item \textbf{Job Chaining}: concatenamento di job sequenziali
+\end{itemize}
+\end{tcolorbox}
+
+%-----------------------------------------------------------------------------
+\section{Job 1: Aggregazione per Education}
+
+Il primo job calcola la \textbf{somma totale delle spese} per ogni livello di istruzione.
+
+\subsection{Mapper (SumMapper)}
+
+Il Mapper legge ogni riga del CSV e:
+\begin{enumerate}
+    \item Ignora la riga di header
+    \item Estrae il campo \texttt{Education} (colonna 2)
+    \item Calcola la spesa totale sommando le colonne 9-14
+    \item Emette la coppia \texttt{(Education, SpesaTotale)}
+\end{enumerate}
+
+\begin{lstlisting}[caption=Logica del SumMapper]
+// Indici delle colonne di spesa
+int[] SPENDING_COLUMNS = {9, 10, 11, 12, 13, 14};
+
+// Per ogni riga del CSV
+String education = cols[2];  // Livello di istruzione
+double totalSpending = 0.0;
+
+// Somma tutte le spese
+for (int i : SPENDING_COLUMNS) {
+    totalSpending += Double.parseDouble(cols[i]);
+}
+
+// Emetti coppia chiave-valore
+context.write(new Text(education), new DoubleWritable(totalSpending));
+\end{lstlisting}
+
+\subsection{Combiner e Reducer (SumReducer)}
+
+La stessa classe viene utilizzata sia come \textbf{Combiner} che come \textbf{Reducer}:
+
+\begin{itemize}
+    \item \textbf{Come Combiner}: esegue una somma parziale locale sul nodo mapper, riducendo il volume di dati trasferiti durante lo shuffle (ottimizzazione)
+    \item \textbf{Come Reducer}: esegue la somma finale di tutti i valori per ogni chiave
+\end{itemize}
+
+Questa ottimizzazione è possibile perché l'operazione di somma è \textbf{associativa} e \textbf{commutativa}.
+
+\begin{lstlisting}[caption=Logica del SumReducer]
+// Per ogni Education, somma tutte le spese
+double sum = 0.0;
+for (DoubleWritable value : values) {
+    sum += value.get();
+}
+context.write(key, new DoubleWritable(sum));
+\end{lstlisting}
+
+\subsection{Output del Job 1}
+
+L'output è nel formato:
+\begin{verbatim}
+Education    SpesaTotale
+\end{verbatim}
+
+%-----------------------------------------------------------------------------
+\section{Job 2: Ordinamento Decrescente}
+
+Il secondo job ordina i risultati in modo \textbf{decrescente} per spesa totale.
+
+\subsection{Tecnica: Value-to-Key Conversion}
+
+Hadoop ordina automaticamente le chiavi in modo \textbf{crescente}. Per ottenere un ordinamento decrescente, si utilizza il trucco della \textbf{chiave negativa}:
+
+\begin{enumerate}
+    \item Il Mapper inverte chiave e valore, emettendo \texttt{(-SpesaTotale, Education)}
+    \item Hadoop ordina per chiave: $-1000 < -500 < -100$
+    \item Questo corrisponde a: $1000 > 500 > 100$ (decrescente!)
+    \item Il Reducer riconverte la spesa in positivo
+\end{enumerate}
+
+\subsection{Mapper (SortMapper)}
+
+\begin{lstlisting}[caption=Logica del SortMapper]
+// Legge output del Job 1: "Education\tSpesaTotale"
+String[] parts = line.split("\t");
+String education = parts[0];
+double spending = Double.parseDouble(parts[1]);
+
+// Emette spesa NEGATIVA come chiave per ordinamento decrescente
+context.write(new DoubleWritable(-spending), new Text(education));
+\end{lstlisting}
+
+\subsection{Reducer (SortReducer)}
+
+\begin{lstlisting}[caption=Logica del SortReducer]
+// Riconverte la spesa da negativa a positiva
+double spending = -key.get();
+
+for (Text education : values) {
+    context.write(education, new DoubleWritable(spending));
+}
+\end{lstlisting}
+
+%-----------------------------------------------------------------------------
+\section{Flusso Completo della Pipeline}
+
+\begin{figure}[H]
+    \centering
+    \begin{tcolorbox}[colback=green!5,colframe=green!40!black,width=\textwidth]
+    \textbf{Input} $\rightarrow$ \texttt{customer.csv} (2240 righe)\\
+    \\
+    $\downarrow$\\
+    \\
+    \textbf{Job 1: Aggregazione}\\
+    \texttt{SumMapper} $\rightarrow$ \texttt{Combiner} $\rightarrow$ \texttt{SumReducer}\\
+    Output: \texttt{(Education, SpesaTotale)} non ordinato\\
+    \\
+    $\downarrow$\\
+    \\
+    \textbf{Job 2: Ordinamento}\\
+    \texttt{SortMapper} $\rightarrow$ \texttt{SortReducer}\\
+    Output: \texttt{(Education, SpesaTotale)} ordinato decrescente\\
+    \\
+    $\downarrow$\\
+    \\
+    \textbf{Output Finale} $\rightarrow$ Classifica per spesa
+    \end{tcolorbox}
+    \caption{Pipeline MapReduce}
+\end{figure}
+
+%-----------------------------------------------------------------------------
+\section{Risultati Esercizio 1}
+
+L'esecuzione del job MapReduce ha prodotto i seguenti risultati:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|r|c|}
+        \hline
+        \textbf{Livello di Istruzione} & \textbf{Spesa Totale (\$)} & \textbf{Posizione} \\
+        \hline
+        Graduation & 698,626.00 & 1° \\
+        \hline
+        PhD & 326,791.00 & 2° \\
+        \hline
+        Master & 226,359.00 & 3° \\
+        \hline
+        2n Cycle & 100,795.00 & 4° \\
+        \hline
+        Basic & 4,417.00 & 5° \\
+        \hline
+    \end{tabular}
+    \caption{Classifica spesa totale per livello di istruzione}
+    \label{tab:risultati_mr}
+\end{table}
+
+\subsection{Analisi dei Risultati}
+
+\begin{itemize}
+    \item I clienti con laurea triennale (\textbf{Graduation}) rappresentano il gruppo con la spesa maggiore, pari a \textbf{\$698,626}
+    \item I clienti con dottorato (\textbf{PhD}) si posizionano al secondo posto con \textbf{\$326,791}
+    \item I clienti con istruzione di base (\textbf{Basic}) hanno la spesa più bassa (\textbf{\$4,417}), probabilmente per il numero ridotto di clienti in questa categoria
+\end{itemize}
+
+%=============================================================================
+% CAPITOLO 3: ESERCIZIO 2 - SPARK
+%=============================================================================
+\chapter{Esercizio 2 -- Apache Spark}
+
+\section{Problema Affrontato}
+
+L'obiettivo dell'esercizio è analizzare il \textbf{Web Conversion Rate} (tasso di conversione web) dei clienti che hanno risposto positivamente all'ultima campagna marketing (\texttt{Response = 1}), raggruppati per \textbf{anno di iscrizione}.
+
+\subsection{Definizione del Web Conversion Rate}
+
+Il Web Conversion Rate misura l'efficacia nel convertire le visite web in acquisti:
+
+\begin{equation}
+    \text{Web Conversion Rate} = \frac{\text{NumWebPurchases}}{\text{NumWebVisitsMonth}}
+\end{equation}
+
+Dove:
+\begin{itemize}
+    \item \textbf{NumWebPurchases}: numero di acquisti effettuati via web
+    \item \textbf{NumWebVisitsMonth}: numero di visite al sito web nell'ultimo mese
+\end{itemize}
+
+Un tasso $> 1$ indica che il cliente effettua più acquisti che visite (acquisti multipli per sessione).
+
+%-----------------------------------------------------------------------------
+\section{Soluzione Proposta}
+
+La soluzione utilizza le \textbf{RDD API} di Spark con le seguenti trasformazioni funzionali:
+
+\begin{tcolorbox}[colback=orange!5,colframe=orange!40!black,title=Operazioni RDD Utilizzate]
+\begin{itemize}
+    \item \texttt{textFile()}: caricamento dati
+    \item \texttt{filter()}: filtraggio header e clienti con Response=1
+    \item \texttt{mapToPair()}: trasformazione in coppie chiave-valore
+    \item \texttt{reduceByKey()}: aggregazione per anno
+    \item \texttt{mapValues()}: calcolo del conversion rate
+    \item \texttt{sortByKey()}: ordinamento per anno
+    \item \texttt{saveAsTextFile()}: salvataggio risultati
+\end{itemize}
+\end{tcolorbox}
+
+%-----------------------------------------------------------------------------
+\section{Workflow del Driver Spark}
+
+\subsection{Step 1: Caricamento e Pulizia Dati}
+
+\begin{lstlisting}[caption=Caricamento dati]
+// Leggi file CSV
+JavaRDD<String> lines = sc.textFile(inputPath);
+
+// Identifica e rimuovi header
+String header = lines.first();
+JavaRDD<String> data = lines.filter(line -> !line.equals(header));
+\end{lstlisting}
+
+\subsection{Step 2: Filtraggio e Trasformazione}
+
+\begin{lstlisting}[caption=Filtraggio clienti Response=1]
+JavaPairRDD<Integer, Tuple2<Double, Double>> yearlyData = data
+    .mapToPair(line -> {
+        String[] cols = line.split(",");
+        
+        // Filtra solo clienti con Response = 1
+        if (!cols[28].trim().equals("1")) {
+            return null;
+        }
+        
+        // Parsing data iscrizione -> estrai anno
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
+        Date date = sdf.parse(cols[7].trim());
+        int year = calendar.get(Calendar.YEAR);
+        
+        // Estrai metriche web
+        double webPurchases = Double.parseDouble(cols[16]);
+        double webVisits = Double.parseDouble(cols[19]);
+        
+        return new Tuple2<>(year, new Tuple2<>(webPurchases, webVisits));
+    })
+    .filter(tuple -> tuple != null);
+\end{lstlisting}
+
+\subsection{Step 3: Aggregazione per Anno}
+
+\begin{lstlisting}[caption=Aggregazione con reduceByKey]
+// Somma purchases e visits per ogni anno
+JavaPairRDD<Integer, Tuple2<Double, Double>> aggregated = yearlyData
+    .reduceByKey((v1, v2) -> new Tuple2<>(
+        v1._1() + v2._1(),   // Somma WebPurchases
+        v1._2() + v2._2()    // Somma WebVisits
+    ));
+\end{lstlisting}
+
+\subsection{Step 4: Calcolo Conversion Rate}
+
+\begin{lstlisting}[caption=Calcolo del tasso di conversione]
+JavaPairRDD<Integer, Double> conversionRates = aggregated
+    .mapValues(v -> {
+        double purchases = v._1();
+        double visits = v._2();
+        
+        // Evita divisione per zero
+        if (visits == 0) return 0.0;
+        
+        return purchases / visits;
+    })
+    .sortByKey();  // Ordina per anno
+\end{lstlisting}
+
+%-----------------------------------------------------------------------------
+\section{Risultati Esercizio 2}
+
+L'esecuzione del job Spark ha prodotto i seguenti risultati:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \textbf{Anno} & \textbf{Conversion Rate} & \textbf{Percentuale} \\
+        \hline
+        2012 & 0.8518 & 85.18\% \\
+        \hline
+        2013 & 1.0664 & 106.64\% \\
+        \hline
+        2014 & 1.0000 & 100.00\% \\
+        \hline
+    \end{tabular}
+    \caption{Web Conversion Rate per anno di iscrizione (clienti Response=1)}
+    \label{tab:risultati_spark}
+\end{table}
+
+\subsection{Analisi dei Risultati}
+
+\begin{itemize}
+    \item \textbf{Anno 2012 (85.18\%)}: I clienti iscritti nel 2012 convertono circa 85 visite su 100 in acquisti. Questo indica un buon tasso di conversione ma con margine di miglioramento.
+    
+    \item \textbf{Anno 2013 (106.64\%)}: Tasso superiore al 100\%, indica che i clienti effettuano \textbf{più acquisti che visite}. Questo suggerisce acquisti multipli per sessione o acquisti tramite altri canali tracciati come web.
+    
+    \item \textbf{Anno 2014 (100.00\%)}: Conversione perfetta 1:1, ogni visita genera esattamente un acquisto.
+\end{itemize}
+
+\begin{tcolorbox}[colback=yellow!10,colframe=yellow!50!black,title=Nota Importante]
+I dati mostrano che i clienti più "anziani" (2012) hanno un conversion rate leggermente inferiore, mentre i clienti iscritti successivamente mostrano tassi migliori. Questo potrebbe indicare un miglioramento dell'esperienza utente del sito web nel tempo.
+\end{tcolorbox}
+
+%=============================================================================
+% CAPITOLO 4: ESECUZIONE E COMANDI
+%=============================================================================
+\chapter{Esecuzione, JAR e Comandi}
+
+\section{Compilazione e Creazione JAR}
+
+\subsection{MapReduce}
+
+\begin{lstlisting}[language=bash,caption=Compilazione MapReduce]
+# Accedere al container namenode
+docker exec -it namenode bash
+cd /submit
+
+# Compilazione
+mkdir -p build
+javac -encoding UTF-8 -cp "$(hadoop classpath)" \
+    -d build $(find src/mapreduce -name "*.java")
+
+# Creazione JAR
+jar -cvf CustomerSpending.jar -C build .
+\end{lstlisting}
+
+\subsection{Spark}
+
+\begin{lstlisting}[language=bash,caption=Compilazione Spark]
+# Nel container namenode
+mkdir -p build_spark
+javac -encoding UTF-8 -cp "/submit/spark_libs/*" \
+    -d build_spark $(find src/spark -name "*.java")
+
+# Creazione JAR
+jar -cvf CustomerSpark.jar -C build_spark .
+\end{lstlisting}
+
+%-----------------------------------------------------------------------------
+\section{Esecuzione dei Job}
+
+\subsection{Esecuzione MapReduce}
+
+\begin{lstlisting}[language=bash,caption=Esecuzione job MapReduce]
+# Caricamento dataset su HDFS
+hdfs dfs -mkdir -p /input
+hdfs dfs -put -f dataset/customer.csv /input/
+
+# Esecuzione job
+hadoop jar CustomerSpending.jar mapreduce.CustomerDriver \
+    /input/customer.csv /output_mapreduce
+
+# Visualizzazione risultati
+hdfs dfs -cat /output_mapreduce/part-r-00000
+\end{lstlisting}
+
+\subsection{Esecuzione Spark}
+
+\begin{lstlisting}[language=bash,caption=Esecuzione job Spark]
+# Costruisci classpath
+SPARK_CP=$(echo /submit/spark_libs/*.jar | tr ' ' ':')
+
+# Esecuzione
+java -cp "/submit/CustomerSpark.jar:$SPARK_CP" \
+    -Dspark.master=local[*] \
+    spark.SparkDriver \
+    hdfs://namenode:8020/input/customer.csv \
+    hdfs://namenode:8020/output_spark
+
+# Visualizzazione risultati
+hdfs dfs -cat /output_spark/part-*
+\end{lstlisting}
+
+%-----------------------------------------------------------------------------
+\section{Script di Automazione}
+
+Sono stati creati script bash per automatizzare l'intero processo:
+
+\begin{itemize}
+    \item \texttt{scripts/run\_mapreduce.sh}: compila, carica dati ed esegue MapReduce
+    \item \texttt{scripts/run\_spark\_local.sh}: compila ed esegue Spark in locale
+\end{itemize}
+
+Utilizzo:
+\begin{lstlisting}[language=bash]
+chmod +x scripts/run_mapreduce.sh
+./scripts/run_mapreduce.sh
+
+chmod +x scripts/run_spark_local.sh
+./scripts/run_spark_local.sh
+\end{lstlisting}
+
+%=============================================================================
+% CAPITOLO 5: CONFRONTO E CONCLUSIONI
+%=============================================================================
+\chapter{Confronto e Conclusioni}
+
+\section{Confronto tra MapReduce e Spark}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|l|c|c|}
+        \hline
+        \textbf{Aspetto} & \textbf{MapReduce} & \textbf{Spark} \\
+        \hline
+        Paradigma & Batch, disk-based & In-memory \\
+        \hline
+        Velocità & Più lento & Più veloce (10-100x) \\
+        \hline
+        API & Basso livello & Alto livello (RDD, DataFrame) \\
+        \hline
+        Fault tolerance & Replica su disco & Lineage RDD \\
+        \hline
+        Complessità codice & Più verbose & Più conciso \\
+        \hline
+        Ottimizzazioni & Combiner manuale & Automatiche \\
+        \hline
+    \end{tabular}
+    \caption{Confronto MapReduce vs Spark}
+\end{table}
+
+\section{Conclusioni}
+
+Il progetto ha permesso di:
+
+\begin{enumerate}
+    \item Implementare una \textbf{pipeline MapReduce} con job chaining, utilizzando pattern come Summarization e Value-to-Key Conversion
+    
+    \item Sviluppare un'applicazione \textbf{Spark} con RDD API, sfruttando trasformazioni funzionali come \texttt{mapToPair}, \texttt{reduceByKey} e \texttt{filter}
+    
+    \item Comprendere le differenze tra i due approcci e quando preferire uno rispetto all'altro
+    
+    \item Utilizzare un ambiente \textbf{Docker} per simulare un cluster distribuito
+\end{enumerate}
+
+\subsection{Risultati Chiave}
+
+\begin{itemize}
+    \item \textbf{MapReduce}: I clienti con laurea (Graduation) sono i maggiori spendenti con \$698,626 di spesa totale
+    
+    \item \textbf{Spark}: Il Web Conversion Rate migliore è nel 2013 (106.64\%), indicando un'alta efficacia delle campagne marketing per i clienti iscritti in quell'anno
+\end{itemize}
+
+\end{document}
