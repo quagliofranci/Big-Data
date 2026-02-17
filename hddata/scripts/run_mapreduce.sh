@@ -11,9 +11,9 @@
 # Descrizione: Script per compilare e eseguire il job Hadoop MapReduce
 #              sul cluster Docker del corso.
 #
-# NOTA: Eseguire questo script dal container NAMENODE:
-#       docker exec -it namenode bash
-#       cd /submit
+# NOTA: Eseguire questo script dal container MASTER:
+#       docker exec -it master bash
+#       cd /data
 #       chmod +x scripts/run_mapreduce.sh
 #       ./scripts/run_mapreduce.sh
 # ============================================================================
@@ -25,7 +25,7 @@ echo "=============================================="
 # ----------------------------------------------------------------------------
 # CONFIGURAZIONE
 # ----------------------------------------------------------------------------
-WORKDIR="/submit"
+WORKDIR="/data"
 DATASET_LOCAL="$WORKDIR/dataset/customer.csv"
 DATASET_HDFS="hdfs:///input/customer.csv"
 OUTPUT_HDFS="hdfs:///output_mapreduce"

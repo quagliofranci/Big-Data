@@ -11,24 +11,24 @@
 # Descrizione: Script per eseguire il job Spark in modalita cluster
 #              sul cluster Docker del corso.
 #
-# NOTA: Eseguire questo script dal container SPARK-MASTER:
-#       docker exec -it spark-master bash
-#       cd /submit
+# NOTA: Eseguire questo script dal container MASTER:
+#       docker exec -it master bash
+#       cd /data
 #       chmod +x scripts/run_spark_cluster.sh
 #       ./scripts/run_spark_cluster.sh
 # ============================================================================
 
 echo "=============================================="
 echo "  Big Data 2023/2024 - Esecuzione Spark"
-echo "  (Modalita: SPARK STANDALONE CLUSTER)"
+echo "  (Modalita: LOCALE con java -cp)"
 echo "=============================================="
 
 # ----------------------------------------------------------------------------
 # CONFIGURAZIONE
 # ----------------------------------------------------------------------------
-WORKDIR="/submit"
-DATASET_HDFS="hdfs://namenode:8020/input/customer.csv"
-OUTPUT_HDFS="hdfs://namenode:8020/output_spark_cluster"
+WORKDIR="/data"
+DATASET_HDFS="hdfs://master:54310/input/customer.csv"
+OUTPUT_HDFS="hdfs://master:54310/output_spark_cluster"
 JAR_NAME="CustomerSpark.jar"
 MAIN_CLASS="spark.SparkDriver"
 
@@ -45,7 +45,7 @@ if [ ! -f "$JAR_NAME" ]; then
     
     rm -rf build_spark
     mkdir -p build_spark
-    javac -encoding UTF-8 -cp "/spark/jars/*" -d build_spark $(find src/spark -name "*.java")
+    javac -encoding UTF-8 -cp "$WORKDIR/spark_libs/*" -d build_spark $(find src/spark -name "*.java")
     
     if [ $? -ne 0 ]; then
         echo "ERRORE: Compilazione fallita!"
@@ -57,23 +57,30 @@ fi
 echo "JAR pronto: $JAR_NAME"
 
 # ----------------------------------------------------------------------------
-# STEP 2: Esecuzione Spark su Cluster
+# STEP 2: Pulizia output precedente
 # ----------------------------------------------------------------------------
 echo ""
-echo ">>> STEP 2: Esecuzione Spark su Cluster..."
-echo "Modalita: spark://spark-master:7077"
+echo ">>> STEP 2: Pulizia output precedente..."
+
+hdfs dfs -rm -r -f /output_spark_cluster 2>/dev/null
+echo "Pulizia completata."
+
+# ----------------------------------------------------------------------------
+# STEP 3: Esecuzione Spark
+# ----------------------------------------------------------------------------
+echo ""
+echo ">>> STEP 3: Esecuzione Spark..."
 echo "Input:    $DATASET_HDFS"
 echo "Output:   $OUTPUT_HDFS"
 echo ""
 
-/spark/bin/spark-submit \
-    --class $MAIN_CLASS \
-    --master spark://spark-master:7077 \
-    --deploy-mode client \
-    --executor-memory 512m \
-    --total-executor-cores 2 \
-    --conf spark.hadoop.fs.defaultFS=hdfs://namenode:8020 \
-    $WORKDIR/$JAR_NAME \
+SPARK_CP=$(echo $WORKDIR/spark_libs/*.jar | tr ' ' ':')
+
+java -cp "$WORKDIR/$JAR_NAME:$SPARK_CP" \
+    -Dspark.master=local[*] \
+    -Dspark.app.name=WebConversionRate \
+    -Dspark.hadoop.fs.defaultFS=hdfs://master:54310 \
+    $MAIN_CLASS \
     $DATASET_HDFS \
     $OUTPUT_HDFS
 
@@ -84,11 +91,11 @@ fi
 
 echo ""
 echo "=============================================="
-echo "  ESECUZIONE CLUSTER COMPLETATA!"
+echo "  ESECUZIONE COMPLETATA!"
 echo "=============================================="
 echo ""
 echo "Output HDFS: $OUTPUT_HDFS"
 echo ""
-echo "Per vedere i risultati, esegui dal container namenode:"
+echo "Per vedere i risultati:"
 echo "  hdfs dfs -cat /output_spark_cluster/part-*"
 echo ""

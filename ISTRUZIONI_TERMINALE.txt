@@ -8,145 +8,97 @@ Studenti:
 Canale: IZ
 
 ================================================================================
-PREREQUISITI
+AVVIO CLUSTER
 ================================================================================
 
-1. Avviare il cluster Docker:
-   cd /home/quaily/progetto_bigdata
-   docker-compose up -d
+# 1. Avviare i container
+cd /home/quaily/progetto_bigdata
+docker-compose up -d
 
-2. Verificare che i container siano attivi:
-   docker ps
-   
-   Dovresti vedere: namenode, datanode, resourcemanager, spark-master
+# 2. Entrare nel master
+docker exec -it master bash
+
+# 3. Impostare le variabili d'ambiente (NECESSARIO ogni volta che entri)
+export HDFS_NAMENODE_USER=root
+export HDFS_DATANODE_USER=root
+export HDFS_SECONDARYNAMENODE_USER=root
+export YARN_RESOURCEMANAGER_USER=root
+export YARN_NODEMANAGER_USER=root
+export PATH=$PATH:/usr/local/hadoop/bin:/usr/local/hadoop/sbin
+
+# 4. Formattare HDFS (solo la PRIMA VOLTA o dopo reset)
+ssh slave1 "rm -rf /tmp/hadoop-*"
+ssh slave2 "rm -rf /tmp/hadoop-*"
+ssh slave3 "rm -rf /tmp/hadoop-*"
+rm -rf /tmp/hadoop-*
+hdfs namenode -format
+
+# 5. Avviare HDFS e YARN
+start-dfs.sh
+start-yarn.sh
+
+# 6. Verificare che tutto funzioni
+hdfs dfsadmin -report
+# Deve mostrare: Live datanodes (3)
+
 
 ================================================================================
 ESERCIZIO 1 - HADOOP MAPREDUCE
 ================================================================================
 
-IMPORTANTE: Usare il container NAMENODE per MapReduce!
-
---- METODO 1: CON SCRIPT AUTOMATICO ---
-
-docker exec -it namenode bash
-cd /submit
+cd /data
 chmod +x scripts/run_mapreduce.sh
 ./scripts/run_mapreduce.sh
 
-
---- METODO 2: COMANDI MANUALI ---
-
-# Accedere al container
-docker exec -it namenode bash
-cd /submit
-
-# Compilare
-mkdir -p build
-javac -encoding UTF-8 -cp "$(hadoop classpath)" -d build $(find src/mapreduce -name "*.java")
-
-# Creare JAR
-jar -cvf CustomerSpending.jar -C build .
-
-# Caricare dataset su HDFS
-hdfs dfs -mkdir -p /input
-hdfs dfs -put -f dataset/customer.csv /input/
-
-# Pulire output precedenti
-hdfs dfs -rm -r -f /output_mapreduce
-hdfs dfs -rm -r -f /tmp/customer_temp
-
-# Eseguire il job
-hadoop jar CustomerSpending.jar mapreduce.CustomerDriver /input/customer.csv /output_mapreduce
-
-# Visualizzare risultati
-hdfs dfs -cat /output_mapreduce/part-r-00000
-
-# Scaricare output in locale
-mkdir -p output_mapreduce
-hdfs dfs -get /output_mapreduce/* output_mapreduce/
+# Risultati in: /data/output_mapreduce/part-r-00000
 
 
 ================================================================================
 ESERCIZIO 2 - APACHE SPARK
 ================================================================================
 
-IMPORTANTE: Usare il container SPARK-MASTER per Spark!
-
---- METODO 1: CON SCRIPT AUTOMATICO ---
-
-docker exec -it spark-master bash
-cd /submit
+cd /data
 chmod +x scripts/run_spark_local.sh
 ./scripts/run_spark_local.sh
 
-
---- METODO 2: COMANDI MANUALI ---
-
-# Accedere al container
-docker exec -it spark-master bash
-cd /submit
-
-# Compilare
-mkdir -p build_spark
-javac -encoding UTF-8 -cp "/spark/jars/*" -d build_spark $(find src/spark -name "*.java")
-
-# Creare JAR
-jar -cvf CustomerSpark.jar -C build_spark .
-
-# Eseguire Spark (modalita locale)
-/spark/bin/spark-submit \
-    --class spark.SparkDriver \
-    --master local[*] \
-    --conf spark.hadoop.fs.defaultFS=hdfs://namenode:8020 \
-    CustomerSpark.jar \
-    hdfs://namenode:8020/input/customer.csv \
-    hdfs://namenode:8020/output_spark
-
-# Per vedere i risultati, tornare nel namenode:
-exit
-docker exec -it namenode bash
-hdfs dfs -cat /output_spark/part-*
+# Risultati in: /data/output_spark/part-*
 
 
 ================================================================================
-VISUALIZZAZIONE RISULTATI
+SPEGNIMENTO
 ================================================================================
 
-Dal container NAMENODE:
-
-# Risultati MapReduce
-hdfs dfs -cat /output_mapreduce/part-r-00000
-
-# Risultati Spark
-hdfs dfs -cat /output_spark/part-*
-
-
-================================================================================
-PULIZIA E SPEGNIMENTO
-================================================================================
-
-# Uscire dal container
+# Dal container master:
+stop-yarn.sh
+stop-dfs.sh
 exit
 
-# Spegnere il cluster Docker
+# Dal terminale locale:
 cd /home/quaily/progetto_bigdata
 docker-compose down
 
 
 ================================================================================
-RISOLUZIONE PROBLEMI
+SE RIENTRI DOPO AVER SPENTO (senza format)
 ================================================================================
 
-1. "No such file or directory" per /data
-   -> Usare /submit invece di /data
+cd /home/quaily/progetto_bigdata
+docker-compose up -d
+docker exec -it master bash
 
-2. "unmappable character for encoding ASCII"
-   -> Aggiungere -encoding UTF-8 al comando javac
+export HDFS_NAMENODE_USER=root
+export HDFS_DATANODE_USER=root
+export HDFS_SECONDARYNAMENODE_USER=root
+export YARN_RESOURCEMANAGER_USER=root
+export YARN_NODEMANAGER_USER=root
+export PATH=$PATH:/usr/local/hadoop/bin:/usr/local/hadoop/sbin
 
-3. "No such container: master"
-   -> Il container si chiama spark-master o namenode
+start-dfs.sh
+start-yarn.sh
+hdfs dfsadmin -report
 
-4. Errore connessione HDFS da Spark
-   -> Usare hdfs://namenode:8020/ come prefisso nei percorsi
+# Se i datanodes non si connettono, riformatta (vedi sezione AVVIO CLUSTER)
+# NOTA: dopo un format devi ricaricare il dataset su HDFS rieseguendo gli script
+
 
 ================================================================================

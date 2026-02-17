@@ -1,0 +1,19 @@
+# File compilati (si rigenerano dagli script)
+hddata/build/
+hddata/build_spark/
+hddata/classes/
+
+# Vecchi JAR non più utilizzati
+hddata/exercise1.jar
+hddata/exercise1_pipeline.jar
+
+# Vecchi output e backup
+hddata/output_sicuro/
+hddata/output/
+hddata/src/_old_backup/
+
+# File di configurazione non più necessario
+hadoop.env
+
+# Cartella vuota
+build/

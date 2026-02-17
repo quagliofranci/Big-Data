@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# PROGETTO BIG DATA 2023/2024 - Script Esecuzione Spark
+# PROGETTO BIG DATA 2023/2024 - Script Esecuzione Spark (Locale)
 # ============================================================================
 # 
 # Studenti:
@@ -8,9 +8,9 @@
 #   - Giuseppe Alfonso Mangiola (0622702372) - g.mangiola1@studenti.unisa.it
 # Canale: IZ
 #
-# ESEGUIRE DAL CONTAINER NAMENODE:
-#   docker exec -it namenode bash
-#   cd /submit
+# ESEGUIRE DAL CONTAINER MASTER:
+#   docker exec -it master bash
+#   cd /data
 #   chmod +x scripts/run_spark_local.sh
 #   ./scripts/run_spark_local.sh
 # ============================================================================
@@ -19,7 +19,7 @@ echo "=============================================="
 echo "  Big Data 2023/2024 - Esecuzione Spark"
 echo "=============================================="
 
-WORKDIR="/submit"
+WORKDIR="/data"
 cd $WORKDIR
 
 # ----------------------------------------------------------------------------
@@ -70,10 +70,10 @@ SPARK_CP=$(echo $WORKDIR/spark_libs/*.jar | tr ' ' ':')
 java -cp "$WORKDIR/CustomerSpark.jar:$SPARK_CP" \
     -Dspark.master=local[*] \
     -Dspark.app.name=WebConversionRate \
-    -Dspark.hadoop.fs.defaultFS=hdfs://namenode:8020 \
+    -Dspark.hadoop.fs.defaultFS=hdfs://master:54310 \
     spark.SparkDriver \
-    hdfs://namenode:8020/input/customer.csv \
-    hdfs://namenode:8020/output_spark
+    hdfs://master:54310/input/customer.csv \
+    hdfs://master:54310/output_spark
 
 if [ $? -ne 0 ]; then
     echo ""
