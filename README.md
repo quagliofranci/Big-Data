@@ -21,27 +21,12 @@ Il progetto utilizza il dataset **customer.csv** contenente informazioni sui cli
 - **Righe**: 2240
 - **Colonne**: 29
 
-### Descrizione colonne principali
-
-| Colonna | Descrizione |
-|---------|-------------|
-| ID | Identificativo cliente |
-| Year_Birth | Anno di nascita |
-| Education | Livello di istruzione |
-| Marital_Status | Stato civile |
-| Income | Reddito annuo |
-| Dt_Customer | Data di iscrizione |
-| MntWines, MntFruits, MntMeatProducts, MntFishProducts, MntSweetProducts, MntGoldProds | Spese per categoria |
-| NumWebPurchases | Numero acquisti via web |
-| NumWebVisitsMonth | Visite web mensili |
-| Response | Risposta all'ultima campagna (1=Sì, 0=No) |
-
 ---
 
 ## Esercizio 1 - Hadoop MapReduce
 
 ### Obiettivo
-Creare una **classifica dei livelli di istruzione** ordinata per **spesa totale decrescente**.
+Individuare i **Top-3 livelli di istruzione** per **spesa totale**.
 
 ### Soluzione
 Pipeline di 2 job MapReduce concatenati:
@@ -51,13 +36,13 @@ Pipeline di 2 job MapReduce concatenati:
 - Combiner: aggregazione locale per ridurre shuffle
 - Reducer: somma le spese per ogni livello di istruzione
 
-**Job 2 - Ordinamento**
-- Mapper: inverte chiave/valore con spesa negativa (Value-to-Key Conversion)
-- Reducer: ripristina formato originale con ordinamento decrescente
+**Job 2 - Top-K (K=3)**
+- Mapper: mantiene una TreeMap locale con i Top-3, emette in cleanup()
+- Reducer: unisce i Top-K parziali in una TreeMap globale, emette in ordine decrescente
 
 ### Pattern utilizzati
 - **Summarization Pattern** (aggregazione con Combiner)
-- **Value-to-Key Conversion** (ordinamento decrescente)
+- **Top-K Pattern** (selezione dei K elementi massimi con TreeMap)
 - **Job Chaining** (concatenamento job)
 
 ### Struttura codice
@@ -66,53 +51,15 @@ hddata/src/mapreduce/
 ├── CustomerDriver.java   # Driver principale
 ├── SumMapper.java        # Job 1 - Mapper
 ├── SumReducer.java       # Job 1 - Reducer/Combiner
-├── SortMapper.java       # Job 2 - Mapper
-└── SortReducer.java      # Job 2 - Reducer
+├── TopKMapper.java       # Job 2 - Mapper (Top-K)
+└── TopKReducer.java      # Job 2 - Reducer (Top-K)
 ```
 
-### Compilazione ed Esecuzione
-
-```bash
-# Accedi al container master
-docker exec -it master bash
-
-# Vai alla cartella dati
-cd /data
-
-# Compila
-mkdir -p build
-javac -cp "$(hadoop classpath)" -d build $(find src/mapreduce -name "*.java")
-
-# Crea JAR
-jar -cvf CustomerAnalysis.jar -C build .
-
-# Carica dataset su HDFS
-hdfs dfs -mkdir -p /input
-hdfs dfs -put dataset/customer.csv /input/
-
-# Esegui
-hadoop jar CustomerAnalysis.jar mapreduce.CustomerDriver hdfs:///input/customer.csv hdfs:///output_mapreduce
-
-# Visualizza risultati
-hdfs dfs -cat hdfs:///output_mapreduce/part-r-00000
-
-# Scarica output in locale
-hdfs dfs -get hdfs:///output_mapreduce /data/
+### Output
 ```
-
-In alternativa, usa lo script:
-```bash
-chmod +x /data/scripts/run_mapreduce.sh
-/data/scripts/run_mapreduce.sh
-```
-
-### Output atteso
-```
-PhD             1388559.0
-Graduation      1217553.0
-Master          620998.0
-2n Cycle        503185.0
-Basic           50831.0
+Graduation      698626.0
+PhD             326791.0
+Master          226359.0
 ```
 
 ---
@@ -120,80 +67,22 @@ Basic           50831.0
 ## Esercizio 2 - Apache Spark
 
 ### Obiettivo
-Calcolare il **Web Conversion Rate** (tasso di conversione web) per anno di iscrizione, considerando solo i clienti che hanno risposto positivamente all'ultima campagna marketing (Response = 1).
-
-### Formula
-```
-Web Conversion Rate = NumWebPurchases / NumWebVisitsMonth
-```
+Calcolare il **Web Conversion Rate** (NumWebPurchases / NumWebVisitsMonth) per anno di iscrizione, considerando solo i clienti con Response = 1.
 
 ### Soluzione
-1. Filtra clienti con Response = 1
-2. Raggruppa per anno di iscrizione (estratto da Dt_Customer)
-3. Calcola somma di WebPurchases e WebVisits per anno
-4. Calcola il tasso: Sum(Purchases) / Sum(Visits)
-5. Ordina per anno
+Pipeline RDD: filter → mapToPair → reduceByKey → mapValues → sortByKey → saveAsTextFile
 
 ### Struttura codice
 ```
 hddata/src/spark/
-└── SparkDriver.java   # Driver Spark
+└── SparkDriver.java
 ```
 
-### Compilazione ed Esecuzione
-
-**Modalità Locale:**
-```bash
-# Accedi al container master
-docker exec -it master bash
-cd /data
-
-# Compila
-mkdir -p build_spark
-javac -cp "$SPARK_HOME/jars/*" -d build_spark $(find src/spark -name "*.java")
-
-# Crea JAR
-jar -cvf CustomerSpark.jar -C build_spark .
-
-# Esegui in locale
-spark-submit --class spark.SparkDriver --master local[*] CustomerSpark.jar dataset/customer.csv output_spark
-
-# Visualizza risultati
-cat output_spark/part-*
+### Output
 ```
-
-**Modalità Cluster (HDFS):**
-```bash
-# Carica su HDFS (se non già fatto)
-hdfs dfs -put dataset/customer.csv /input/
-
-# Esegui con I/O su HDFS
-spark-submit --class spark.SparkDriver --master local[*] CustomerSpark.jar hdfs:///input/customer.csv hdfs:///output_spark
-
-# Visualizza risultati
-hdfs dfs -cat hdfs:///output_spark/part-*
-
-# Scarica in locale
-hdfs dfs -get hdfs:///output_spark /data/
-```
-
-In alternativa, usa gli script:
-```bash
-chmod +x /data/scripts/run_spark_local.sh
-chmod +x /data/scripts/run_spark_cluster.sh
-
-# Esecuzione locale
-/data/scripts/run_spark_local.sh
-
-# Esecuzione cluster
-/data/scripts/run_spark_cluster.sh
-```
-
-### Output atteso
-```
-2012	0.8518	(85.18%)
-2013	1.0664	(106.64%)
-2014	1.0     (100%)
+2012    0.8518    (85.18%)
+2013    1.0664    (106.64%)
+2014    1.0       (100%)
 ```
 
 ---
@@ -202,73 +91,80 @@ chmod +x /data/scripts/run_spark_cluster.sh
 
 ```
 progetto_bigdata/
-├── README.md                      # Questo file
-├── docker-compose.yml             # Configurazione Docker
-├── hadoop.env                     # Variabili ambiente Hadoop
-├── documentation/                 # Report e documentazione
-│   └── (Report PDF da aggiungere)
-├── scripts/                       # Script di esecuzione
-│   ├── run_mapreduce.sh
-│   ├── run_spark_local.sh
-│   └── run_spark_cluster.sh
+├── Dockerfile                     # Immagine Docker hadoop-new
+├── docker-compose.yml             # Cluster: master + 3 slave
+├── config/                        # Configurazione Hadoop
+│   ├── core-site.xml
+│   ├── hdfs-site.xml
+│   ├── workers
+│   ├── hadoop-env.sh
+│   ├── bootstrap.sh
+│   └── ssh_config
+├── ISTRUZIONI_TERMINALE.txt       # Comandi di esecuzione
+├── documentation/
+│   └── report.tex                 # Report LaTeX
 └── hddata/
     ├── dataset/
-    │   └── customer.csv           # Dataset
+    │   └── customer.csv
     ├── src/
-    │   ├── mapreduce/             # Codice MapReduce
+    │   ├── mapreduce/
     │   │   ├── CustomerDriver.java
     │   │   ├── SumMapper.java
     │   │   ├── SumReducer.java
-    │   │   ├── SortMapper.java
-    │   │   └── SortReducer.java
-    │   └── spark/                 # Codice Spark
+    │   │   ├── TopKMapper.java
+    │   │   └── TopKReducer.java
+    │   └── spark/
     │       └── SparkDriver.java
-    ├── CustomerAnalysis.jar       # JAR MapReduce (generato)
-    ├── CustomerSpark.jar          # JAR Spark (generato)
-    ├── output_mapreduce/          # Output MapReduce
-    └── output_spark/              # Output Spark
+    ├── scripts/
+    │   ├── run_mapreduce.sh
+    │   ├── run_spark_local.sh
+    │   └── run_spark_cluster.sh
+    ├── spark_libs/                 # Librerie Spark (JAR)
+    ├── CustomerSpending.jar        # JAR MapReduce
+    ├── CustomerSpark.jar           # JAR Spark
+    ├── output_mapreduce/           # Output MapReduce
+    └── output_spark/               # Output Spark
 ```
 
 ---
 
-## Docker
+## Esecuzione
 
 ### Avvio cluster
 ```bash
-cd progetto_bigdata
+cd /home/quaily/progetto_bigdata
 docker-compose up -d
-```
-
-### Accesso al container master
-```bash
 docker exec -it master bash
+
+export HDFS_NAMENODE_USER=root
+export HDFS_DATANODE_USER=root
+export HDFS_SECONDARYNAMENODE_USER=root
+export YARN_RESOURCEMANAGER_USER=root
+export YARN_NODEMANAGER_USER=root
+export PATH=$PATH:/usr/local/hadoop/bin:/usr/local/hadoop/sbin
+
+# Solo la prima volta
+hdfs namenode -format
+start-dfs.sh
+start-yarn.sh
 ```
 
-### Stop cluster
+### Esecuzione MapReduce
 ```bash
+cd /data
+./scripts/run_mapreduce.sh
+```
+
+### Esecuzione Spark
+```bash
+cd /data
+./scripts/run_spark_local.sh
+```
+
+### Spegnimento
+```bash
+stop-yarn.sh
+stop-dfs.sh
+exit
 docker-compose down
-```
-
----
-
-## Note
-
-- Java 8 utilizzato per compatibilità con Hadoop e Spark
-- I JAR contengono solo il codice utente, non le librerie di framework
-- Il Combiner nel Job 1 di MapReduce ottimizza il trasferimento dati
-- Spark utilizza le RDD API con lambda expressions
-
----
-
-## Pulizia HDFS
-
-```bash
-# Rimuovi output MapReduce
-hdfs dfs -rm -r hdfs:///output_mapreduce
-
-# Rimuovi output Spark
-hdfs dfs -rm -r hdfs:///output_spark
-
-# Rimuovi input
-hdfs dfs -rm -r hdfs:///input
 ```
