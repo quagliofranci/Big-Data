@@ -135,11 +135,9 @@ La traccia assegnata prevede due esercizi distinti:
 %-----------------------------------------------------------------------------
 \section{Dataset: customer.csv}
 
-Il dataset fornito, denominato \texttt{customer.csv}, contiene informazioni relative a \textbf{2240 clienti} di un'azienda, con dati demografici, comportamentali e di acquisto.
+Il dataset fornito, denominato \texttt{customer.csv}, contiene informazioni relative a \textbf{2240 clienti} di un'azienda, con dati demografici, comportamentali e di acquisto. Il file \`e composto da \textbf{29 colonne} in formato CSV con separatore virgola. La prima riga contiene l'intestazione (header) che viene ignorata durante l'elaborazione.
 
-\subsection{Struttura del Dataset}
-
-Il file \`e composto da \textbf{29 colonne}. Le principali utilizzate nel progetto sono:
+Le principali colonne utilizzate nel progetto sono riportate nella Tabella~\ref{tab:dataset}.
 
 \begin{table}[H]
     \centering
@@ -149,23 +147,11 @@ Il file \`e composto da \textbf{29 colonne}. Le principali utilizzate nel proget
         \hline
         0 & ID & Identificativo univoco del cliente \\
         \hline
-        1 & Year\_Birth & Anno di nascita \\
-        \hline
         2 & Education & Livello di istruzione (Basic, Graduation, Master, PhD, 2n Cycle) \\
         \hline
         7 & Dt\_Customer & Data di iscrizione (formato dd-MM-yyyy) \\
         \hline
-        9 & MntWines & Spesa in vini \\
-        \hline
-        10 & MntFruits & Spesa in frutta \\
-        \hline
-        11 & MntMeatProducts & Spesa in carne \\
-        \hline
-        12 & MntFishProducts & Spesa in pesce \\
-        \hline
-        13 & MntSweetProducts & Spesa in dolci \\
-        \hline
-        14 & MntGoldProds & Spesa in prodotti premium \\
+        9--14 & Mnt* & Spese per categoria (Wines, Fruits, Meat, Fish, Sweets, Gold) \\
         \hline
         16 & NumWebPurchases & Numero di acquisti via web \\
         \hline
@@ -178,8 +164,6 @@ Il file \`e composto da \textbf{29 colonne}. Le principali utilizzate nel proget
     \label{tab:dataset}
 \end{table}
 
-Il file \`e in formato CSV con separatore virgola (\texttt{,}). La prima riga contiene l'intestazione (header) che viene ignorata durante l'elaborazione.
-
 %-----------------------------------------------------------------------------
 \section{Ambiente Docker}
 
@@ -187,15 +171,11 @@ Per l'esecuzione del progetto \`e stato utilizzato un ambiente distribuito trami
 
 \subsection{Configurazione del Cluster}
 
-Il cluster \`e basato su un'\textbf{immagine Docker personalizzata} (\texttt{hadoop-new}), costruita tramite Dockerfile a partire da Ubuntu con Java 8 e Hadoop 3.3.6. La stessa immagine viene utilizzata per tutti i nodi.
-
-La configurazione si compone dei seguenti container:
+Il cluster \`e basato su un'\textbf{immagine Docker personalizzata} (\texttt{hadoop-new}), costruita tramite Dockerfile a partire da Ubuntu con Java 8 e Hadoop 3.3.6. La stessa immagine viene utilizzata per tutti i nodi. La configurazione si compone dei seguenti container:
 
 \begin{itemize}
     \item \textbf{master}: nodo master che esegue NameNode, SecondaryNameNode e ResourceManager
-    \item \textbf{slave1}: nodo worker con DataNode e NodeManager
-    \item \textbf{slave2}: nodo worker con DataNode e NodeManager
-    \item \textbf{slave3}: nodo worker con DataNode e NodeManager
+    \item \textbf{slave1, slave2, slave3}: nodi worker, ciascuno con DataNode e NodeManager
 \end{itemize}
 
 I nodi comunicano tra loro tramite SSH (configurato senza password) su una rete bridge Docker (\texttt{hadoop\_network}). Il file \texttt{config/core-site.xml} configura il filesystem HDFS su \texttt{hdfs://master:54310}, mentre \texttt{config/workers} elenca i tre nodi slave. Il fattore di replica HDFS \`e impostato a 2 in \texttt{config/hdfs-site.xml}.
@@ -204,15 +184,7 @@ Dopo l'avvio dei container, \`e necessario formattare HDFS (\texttt{hdfs namenod
 
 \subsection{Volumi e Percorsi}
 
-Il volume \texttt{hddata} viene montato nel container master come \texttt{/data}, contenendo:
-\begin{itemize}
-    \item \texttt{dataset/}: file CSV di input
-    \item \texttt{src/mapreduce/}: codice sorgente MapReduce
-    \item \texttt{src/spark/}: codice sorgente Spark
-    \item \texttt{output\_mapreduce/}: risultati MapReduce
-    \item \texttt{output\_spark/}: risultati Spark
-    \item \texttt{scripts/}: script di automazione
-\end{itemize}
+Il volume \texttt{hddata} viene montato nel container master come \texttt{/data}, contenendo il dataset, i sorgenti Java, gli script di automazione e le cartelle di output.
 
 %=============================================================================
 % CAPITOLO 2: ESERCIZIO 1 - MAPREDUCE
@@ -225,10 +197,13 @@ L'obiettivo dell'esercizio \`e calcolare la \textbf{spesa totale} dei clienti pe
 
 \subsection{Definizione della Spesa Totale}
 
-Per ogni cliente, la spesa totale \`e calcolata come la somma delle seguenti colonne:
+Per ogni cliente, la spesa totale \`e calcolata come la somma delle sei colonne di spesa:
 
 \begin{equation}
-    \text{SpesaTotale} = \text{MntWines} + \text{MntFruits} + \text{MntMeatProducts} + \text{MntFishProducts} + \text{MntSweetProducts} + \text{MntGoldProds}
+\begin{split}
+    \text{SpesaTotale} = & \; \text{MntWines} + \text{MntFruits} + \text{MntMeatProducts} \\
+                         & + \text{MntFishProducts} + \text{MntSweetProducts} + \text{MntGoldProds}
+\end{split}
 \end{equation}
 
 Questa somma viene poi aggregata per livello di istruzione (Education).
@@ -253,13 +228,7 @@ Il primo job calcola la \textbf{somma totale delle spese} per ogni livello di is
 
 \subsection{Mapper (SumMapper)}
 
-Il Mapper legge ogni riga del CSV e:
-\begin{enumerate}
-    \item Ignora la riga di header
-    \item Estrae il campo \texttt{Education} (colonna 2)
-    \item Calcola la spesa totale sommando le colonne 9-14
-    \item Emette la coppia \texttt{(Education, SpesaTotale)}
-\end{enumerate}
+Il Mapper legge ogni riga del CSV, ignora l'header, estrae il campo \texttt{Education} (colonna 2) e calcola la spesa totale sommando le colonne 9--14. Emette la coppia \texttt{(Education, SpesaTotale)}.
 
 \begin{lstlisting}[caption=Logica del SumMapper]
 // Indici delle colonne di spesa
@@ -280,14 +249,7 @@ context.write(new Text(education), new DoubleWritable(totalSpending));
 
 \subsection{Combiner e Reducer (SumReducer)}
 
-La stessa classe viene utilizzata sia come \textbf{Combiner} che come \textbf{Reducer}:
-
-\begin{itemize}
-    \item \textbf{Come Combiner}: esegue una somma parziale locale sul nodo mapper, riducendo il volume di dati trasferiti durante lo shuffle (ottimizzazione)
-    \item \textbf{Come Reducer}: esegue la somma finale di tutti i valori per ogni chiave
-\end{itemize}
-
-Questa ottimizzazione \`e possibile perch\'e l'operazione di somma \`e \textbf{associativa} e \textbf{commutativa}.
+La stessa classe viene utilizzata sia come \textbf{Combiner} (somma parziale locale sui nodi mapper, riducendo il volume di dati trasferiti durante lo shuffle) che come \textbf{Reducer} (somma finale di tutti i valori per ogni chiave). Questa ottimizzazione \`e possibile perch\'e l'operazione di somma \`e \textbf{associativa} e \textbf{commutativa}.
 
 \begin{lstlisting}[caption=Logica del SumReducer]
 // Per ogni Education, somma tutte le spese
@@ -298,12 +260,7 @@ for (DoubleWritable value : values) {
 context.write(key, new DoubleWritable(sum));
 \end{lstlisting}
 
-\subsection{Output del Job 1}
-
-L'output \`e nel formato:
-\begin{verbatim}
-Education    SpesaTotale
-\end{verbatim}
+L'output del Job 1 \`e nel formato \texttt{Education\textbackslash tSpesaTotale}, con una riga per ogni livello di istruzione.
 
 %-----------------------------------------------------------------------------
 \section{Job 2: Top-K (K=3)}
@@ -418,12 +375,7 @@ L'esecuzione del job MapReduce ha prodotto i seguenti risultati:
 
 \subsection{Analisi dei Risultati}
 
-\begin{itemize}
-    \item I clienti con laurea triennale (\textbf{Graduation}) rappresentano il gruppo con la spesa maggiore, pari a \textbf{\$698,626}
-    \item I clienti con dottorato (\textbf{PhD}) si posizionano al secondo posto con \textbf{\$326,791}
-    \item I clienti con master (\textbf{Master}) completano il podio con \textbf{\$226,359}
-    \item I restanti livelli (2n Cycle e Basic) vengono esclusi dal Top-3 per via della spesa inferiore
-\end{itemize}
+I clienti con laurea triennale (\textbf{Graduation}) rappresentano il gruppo con la spesa maggiore, pari a \$698,626. Al secondo posto si posizionano i clienti con dottorato (\textbf{PhD}) con \$326,791, mentre i clienti con \textbf{Master} completano il podio con \$226,359. I restanti livelli (2n Cycle e Basic) vengono esclusi dal Top-3 per via della spesa inferiore.
 
 %=============================================================================
 % CAPITOLO 3: ESERCIZIO 2 - SPARK
@@ -442,13 +394,7 @@ Il Web Conversion Rate misura l'efficacia nel convertire le visite web in acquis
     \text{Web Conversion Rate} = \frac{\text{NumWebPurchases}}{\text{NumWebVisitsMonth}}
 \end{equation}
 
-Dove:
-\begin{itemize}
-    \item \textbf{NumWebPurchases}: numero di acquisti effettuati via web
-    \item \textbf{NumWebVisitsMonth}: numero di visite al sito web nell'ultimo mese
-\end{itemize}
-
-Un tasso $> 1$ indica che il cliente effettua pi\`u acquisti che visite (acquisti multipli per sessione).
+dove \textbf{NumWebPurchases} \`e il numero di acquisti effettuati via web e \textbf{NumWebVisitsMonth} \`e il numero di visite al sito web nell'ultimo mese. Un tasso $> 1$ indica che il cliente effettua pi\`u acquisti che visite (acquisti multipli per sessione).
 
 %-----------------------------------------------------------------------------
 \section{Soluzione Proposta}
@@ -470,68 +416,50 @@ La soluzione utilizza le \textbf{RDD API} di Spark con le seguenti trasformazion
 %-----------------------------------------------------------------------------
 \section{Workflow del Driver Spark}
 
-\subsection{Step 1: Caricamento e Pulizia Dati}
+\subsection{Step 1: Caricamento, Pulizia e Filtraggio}
 
-\begin{lstlisting}[caption=Caricamento dati]
-// Leggi file CSV
+Il Driver carica il CSV, rimuove l'header, e filtra solo i clienti con \texttt{Response = 1}. Per ogni cliente valido, estrae l'anno di iscrizione dalla data (colonna 7), il numero di acquisti web (colonna 16) e le visite web mensili (colonna 19), emettendo coppie \texttt{(Anno, (Purchases, Visits))}.
+
+\begin{lstlisting}[caption=Caricamento e filtraggio]
 JavaRDD<String> lines = sc.textFile(inputPath);
-
-// Identifica e rimuovi header
 String header = lines.first();
 JavaRDD<String> data = lines.filter(line -> !line.equals(header));
-\end{lstlisting}
 
-\subsection{Step 2: Filtraggio e Trasformazione}
-
-\begin{lstlisting}[caption=Filtraggio clienti Response=1]
 JavaPairRDD<Integer, Tuple2<Double, Double>> yearlyData = data
     .mapToPair(line -> {
         String[] cols = line.split(",");
+        if (!cols[28].trim().equals("1")) return null;
         
-        // Filtra solo clienti con Response = 1
-        if (!cols[28].trim().equals("1")) {
-            return null;
-        }
-        
-        // Parsing data iscrizione -> estrai anno
         SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
         Date date = sdf.parse(cols[7].trim());
-        int year = calendar.get(Calendar.YEAR);
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(date);
+        int year = cal.get(Calendar.YEAR);
         
-        // Estrai metriche web
-        double webPurchases = Double.parseDouble(cols[16]);
-        double webVisits = Double.parseDouble(cols[19]);
-        
-        return new Tuple2<>(year, new Tuple2<>(webPurchases, webVisits));
+        double purchases = Double.parseDouble(cols[16].trim());
+        double visits = Double.parseDouble(cols[19].trim());
+        return new Tuple2<>(year, new Tuple2<>(purchases, visits));
     })
     .filter(tuple -> tuple != null);
 \end{lstlisting}
 
-\subsection{Step 3: Aggregazione per Anno}
+\subsection{Step 2: Aggregazione e Calcolo Conversion Rate}
 
-\begin{lstlisting}[caption=Aggregazione con reduceByKey]
-// Somma purchases e visits per ogni anno
+Con \texttt{reduceByKey} vengono sommate le metriche per anno, poi \texttt{mapValues} calcola il rapporto tra acquisti e visite totali.
+
+\begin{lstlisting}[caption=Aggregazione e calcolo]
 JavaPairRDD<Integer, Tuple2<Double, Double>> aggregated = yearlyData
     .reduceByKey((v1, v2) -> new Tuple2<>(
         v1._1() + v2._1(),   // Somma WebPurchases
         v1._2() + v2._2()    // Somma WebVisits
     ));
-\end{lstlisting}
 
-\subsection{Step 4: Calcolo Conversion Rate}
-
-\begin{lstlisting}[caption=Calcolo del tasso di conversione]
 JavaPairRDD<Integer, Double> conversionRates = aggregated
     .mapValues(v -> {
-        double purchases = v._1();
-        double visits = v._2();
-        
-        // Evita divisione per zero
-        if (visits == 0) return 0.0;
-        
-        return purchases / visits;
+        if (v._2() == 0) return 0.0;
+        return v._1() / v._2();
     })
-    .sortByKey();  // Ordina per anno
+    .sortByKey();
 \end{lstlisting}
 
 %-----------------------------------------------------------------------------
@@ -558,13 +486,7 @@ L'esecuzione del job Spark ha prodotto i seguenti risultati:
 
 \subsection{Analisi dei Risultati}
 
-\begin{itemize}
-    \item \textbf{Anno 2012 (85.18\%)}: I clienti iscritti nel 2012 convertono circa 85 visite su 100 in acquisti. Questo indica un buon tasso di conversione ma con margine di miglioramento.
-    
-    \item \textbf{Anno 2013 (106.64\%)}: Tasso superiore al 100\%, indica che i clienti effettuano \textbf{pi\`u acquisti che visite}. Questo suggerisce acquisti multipli per sessione o acquisti tramite altri canali tracciati come web.
-    
-    \item \textbf{Anno 2014 (100.00\%)}: Conversione perfetta 1:1, ogni visita genera esattamente un acquisto.
-\end{itemize}
+I clienti iscritti nel \textbf{2012} mostrano un conversion rate dell'85.18\%, indicando un buon tasso con margine di miglioramento. I clienti del \textbf{2013} raggiungono il 106.64\%, un tasso superiore al 100\% che suggerisce acquisti multipli per sessione. I clienti del \textbf{2014} presentano una conversione perfetta 1:1.
 
 \begin{tcolorbox}[colback=yellow!10,colframe=yellow!50!black,title=Nota Importante]
 I dati mostrano che i clienti pi\`u ``anziani'' (2012) hanno un conversion rate leggermente inferiore, mentre i clienti iscritti successivamente mostrano tassi migliori. Questo potrebbe indicare un miglioramento dell'esperienza utente del sito web nel tempo.
@@ -692,17 +614,7 @@ chmod +x scripts/run_spark_local.sh
 
 \section{Conclusioni}
 
-Il progetto ha permesso di:
-
-\begin{enumerate}
-    \item Implementare una \textbf{pipeline MapReduce} con job chaining, utilizzando pattern come Summarization e Top-K
-    
-    \item Sviluppare un'applicazione \textbf{Spark} con RDD API, sfruttando trasformazioni funzionali come \texttt{mapToPair}, \texttt{reduceByKey} e \texttt{filter}
-    
-    \item Comprendere le differenze tra i due approcci e quando preferire uno rispetto all'altro
-    
-    \item Utilizzare un ambiente \textbf{Docker} per simulare un cluster distribuito
-\end{enumerate}
+Il progetto ha permesso di implementare una \textbf{pipeline MapReduce} con job chaining, utilizzando i pattern Summarization e Top-K, e di sviluppare un'applicazione \textbf{Spark} con RDD API, sfruttando trasformazioni funzionali come \texttt{mapToPair}, \texttt{reduceByKey} e \texttt{filter}. Il confronto tra i due approcci ha evidenziato come Spark risulti pi\`u conciso e performante per pipeline complesse grazie all'elaborazione in-memory, mentre MapReduce offre un modello pi\`u esplicito e controllabile.
 
 \subsection{Risultati Chiave}
 
