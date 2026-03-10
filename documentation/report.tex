@@ -13,6 +13,12 @@
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{tcolorbox}
+\usepackage{etoolbox}
+
+% RIMUOVI PAGINE VUOTE: chapter non forza nuova pagina
+\makeatletter
+\patchcmd{\chapter}{\if@openright\cleardoublepage\else\clearpage\fi}{\clearpage}{}{}
+\makeatother
 
 % Configurazione listings per codice Java
 \lstset{
@@ -97,6 +103,10 @@
         
         \textbf{Canale:} IZ
         
+        \vspace{0.5cm}
+        
+        \textbf{Docente:} Prof. Ferraro Alceste --- a.ferraro28@unisa.it
+        
         \vfill
         
         {\large\textbf{Anno Accademico 2023/2024}}
@@ -108,7 +118,6 @@
 % INDICE
 %=============================================================================
 \tableofcontents
-\newpage
 
 %=============================================================================
 % CAPITOLO 1: INTRODUZIONE
@@ -135,9 +144,7 @@ La traccia assegnata prevede due esercizi distinti:
 %-----------------------------------------------------------------------------
 \section{Dataset: customer.csv}
 
-Il dataset fornito, denominato \texttt{customer.csv}, contiene informazioni relative a \textbf{2240 clienti} di un'azienda, con dati demografici, comportamentali e di acquisto. Il file \`e composto da \textbf{29 colonne} in formato CSV con separatore virgola. La prima riga contiene l'intestazione (header) che viene ignorata durante l'elaborazione.
-
-Le principali colonne utilizzate nel progetto sono riportate nella Tabella~\ref{tab:dataset}.
+Il dataset fornito, denominato \texttt{customer.csv}, contiene informazioni relative a \textbf{2240 clienti} di un'azienda, con dati demografici, comportamentali e di acquisto. Il file \`e composto da \textbf{29 colonne} in formato CSV con separatore virgola. La prima riga contiene l'intestazione (header) che viene ignorata durante l'elaborazione. Le principali colonne utilizzate nel progetto sono riportate nella Tabella~\ref{tab:dataset}.
 
 \begin{table}[H]
     \centering
@@ -178,13 +185,11 @@ Il cluster \`e basato su un'\textbf{immagine Docker personalizzata} (\texttt{had
     \item \textbf{slave1, slave2, slave3}: nodi worker, ciascuno con DataNode e NodeManager
 \end{itemize}
 
-I nodi comunicano tra loro tramite SSH (configurato senza password) su una rete bridge Docker (\texttt{hadoop\_network}). Il file \texttt{config/core-site.xml} configura il filesystem HDFS su \texttt{hdfs://master:54310}, mentre \texttt{config/workers} elenca i tre nodi slave. Il fattore di replica HDFS \`e impostato a 2 in \texttt{config/hdfs-site.xml}.
-
-Dopo l'avvio dei container, \`e necessario formattare HDFS (\texttt{hdfs namenode -format}) e avviare manualmente i servizi con \texttt{start-dfs.sh} e \texttt{start-yarn.sh} dal container master.
+I nodi comunicano tra loro tramite SSH (configurato senza password) su una rete bridge Docker (\texttt{hadoop\_network}). Il file \texttt{config/core-site.xml} configura il filesystem HDFS su \texttt{hdfs://master:54310}, mentre \texttt{config/workers} elenca i tre nodi slave. Il fattore di replica HDFS \`e impostato a 2 in \texttt{config/hdfs-site.xml}. Dopo l'avvio dei container, \`e necessario formattare HDFS (\texttt{hdfs namenode -format}) e avviare i servizi con \texttt{start-dfs.sh} e \texttt{start-yarn.sh} dal container master.
 
 \subsection{Volumi e Percorsi}
 
-Il volume \texttt{hddata} viene montato nel container master come \texttt{/data}, contenendo il dataset, i sorgenti Java, gli script di automazione e le cartelle di output.
+Il volume \texttt{hddata} viene montato nel container master come \texttt{/data}, contenendo il dataset, i sorgenti Java (nelle sotto-cartelle \texttt{src/mapreduce/} e \texttt{src/spark/}), gli script di automazione (\texttt{scripts/}), le librerie Spark (\texttt{spark\_libs/}) e le cartelle di output.
 
 %=============================================================================
 % CAPITOLO 2: ESERCIZIO 1 - MAPREDUCE
@@ -193,11 +198,7 @@ Il volume \texttt{hddata} viene montato nel container master come \texttt{/data}
 
 \section{Problema Affrontato}
 
-L'obiettivo dell'esercizio \`e calcolare la \textbf{spesa totale} dei clienti per ogni \textbf{livello di istruzione} e individuare i \textbf{Top-3 livelli di istruzione} con la spesa pi\`u alta.
-
-\subsection{Definizione della Spesa Totale}
-
-Per ogni cliente, la spesa totale \`e calcolata come la somma delle sei colonne di spesa:
+L'obiettivo dell'esercizio \`e calcolare la \textbf{spesa totale} dei clienti per ogni \textbf{livello di istruzione} e individuare i \textbf{Top-3 livelli di istruzione} con la spesa pi\`u alta. Per ogni cliente, la spesa totale \`e calcolata come la somma delle sei colonne di spesa:
 
 \begin{equation}
 \begin{split}
@@ -354,7 +355,7 @@ for (Map.Entry<Double, String> entry : desc.entrySet()) {
 %-----------------------------------------------------------------------------
 \section{Risultati Esercizio 1}
 
-L'esecuzione del job MapReduce ha prodotto i seguenti risultati:
+L'esecuzione del job MapReduce ha prodotto i risultati riportati nella Tabella~\ref{tab:risultati_mr}.
 
 \begin{table}[H]
     \centering
@@ -373,8 +374,6 @@ L'esecuzione del job MapReduce ha prodotto i seguenti risultati:
     \label{tab:risultati_mr}
 \end{table}
 
-\subsection{Analisi dei Risultati}
-
 I clienti con laurea triennale (\textbf{Graduation}) rappresentano il gruppo con la spesa maggiore, pari a \$698,626. Al secondo posto si posizionano i clienti con dottorato (\textbf{PhD}) con \$326,791, mentre i clienti con \textbf{Master} completano il podio con \$226,359. I restanti livelli (2n Cycle e Basic) vengono esclusi dal Top-3 per via della spesa inferiore.
 
 %=============================================================================
@@ -384,11 +383,7 @@ I clienti con laurea triennale (\textbf{Graduation}) rappresentano il gruppo con
 
 \section{Problema Affrontato}
 
-L'obiettivo dell'esercizio \`e analizzare il \textbf{Web Conversion Rate} (tasso di conversione web) dei clienti che hanno risposto positivamente all'ultima campagna marketing (\texttt{Response = 1}), raggruppati per \textbf{anno di iscrizione}.
-
-\subsection{Definizione del Web Conversion Rate}
-
-Il Web Conversion Rate misura l'efficacia nel convertire le visite web in acquisti:
+L'obiettivo dell'esercizio \`e analizzare il \textbf{Web Conversion Rate} (tasso di conversione web) dei clienti che hanno risposto positivamente all'ultima campagna marketing (\texttt{Response = 1}), raggruppati per \textbf{anno di iscrizione}. Il Web Conversion Rate misura l'efficacia nel convertire le visite web in acquisti:
 
 \begin{equation}
     \text{Web Conversion Rate} = \frac{\text{NumWebPurchases}}{\text{NumWebVisitsMonth}}
@@ -465,7 +460,7 @@ JavaPairRDD<Integer, Double> conversionRates = aggregated
 %-----------------------------------------------------------------------------
 \section{Risultati Esercizio 2}
 
-L'esecuzione del job Spark ha prodotto i seguenti risultati:
+L'esecuzione del job Spark ha prodotto i risultati riportati nella Tabella~\ref{tab:risultati_spark}.
 
 \begin{table}[H]
     \centering
@@ -484,11 +479,9 @@ L'esecuzione del job Spark ha prodotto i seguenti risultati:
     \label{tab:risultati_spark}
 \end{table}
 
-\subsection{Analisi dei Risultati}
-
 I clienti iscritti nel \textbf{2012} mostrano un conversion rate dell'85.18\%, indicando un buon tasso con margine di miglioramento. I clienti del \textbf{2013} raggiungono il 106.64\%, un tasso superiore al 100\% che suggerisce acquisti multipli per sessione. I clienti del \textbf{2014} presentano una conversione perfetta 1:1.
 
-\begin{tcolorbox}[colback=yellow!10,colframe=yellow!50!black,title=Nota Importante]
+\begin{tcolorbox}[colback=yellow!10,colframe=yellow!50!black,title=Nota]
 I dati mostrano che i clienti pi\`u ``anziani'' (2012) hanno un conversion rate leggermente inferiore, mentre i clienti iscritti successivamente mostrano tassi migliori. Questo potrebbe indicare un miglioramento dell'esperienza utente del sito web nel tempo.
 \end{tcolorbox}
 
