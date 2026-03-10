@@ -57,7 +57,7 @@
     \begin{center}
         \vspace*{1cm}
         
-        \LARGE{\textbf{UNIVERSITÀ DEGLI STUDI DI SALERNO}}\\
+        \LARGE{\textbf{UNIVERSIT\`A DEGLI STUDI DI SALERNO}}\\
         \vspace{3mm}
         \large{Dipartimento di Ingegneria dell'Informazione ed Elettrica\\e Matematica Applicata (DIEM)}\\
         
@@ -121,13 +121,13 @@ Il presente progetto ha come obiettivo l'analisi di un dataset reale mediante l'
 
 \begin{itemize}
     \item \textbf{Apache Hadoop MapReduce}: framework per l'elaborazione distribuita batch di grandi volumi di dati
-    \item \textbf{Apache Spark}: framework per l'elaborazione distribuita in-memory, più veloce e versatile
+    \item \textbf{Apache Spark}: framework per l'elaborazione distribuita in-memory, pi\`u veloce e versatile
 \end{itemize}
 
 La traccia assegnata prevede due esercizi distinti:
 
 \begin{enumerate}
-    \item \textbf{Esercizio 1 (Hadoop MapReduce)}: Calcolare la \textbf{spesa totale} dei clienti raggruppata per \textbf{livello di istruzione} (Education) e produrre una classifica ordinata in modo decrescente.
+    \item \textbf{Esercizio 1 (Hadoop MapReduce)}: Calcolare la \textbf{spesa totale} dei clienti raggruppata per \textbf{livello di istruzione} (Education) e individuare i \textbf{Top-3} livelli con la spesa pi\`u alta.
     
     \item \textbf{Esercizio 2 (Apache Spark)}: Analizzare il \textbf{Web Conversion Rate} (tasso di conversione web) dei clienti che hanno risposto positivamente alle campagne marketing, raggruppati per \textbf{anno di iscrizione}.
 \end{enumerate}
@@ -139,7 +139,7 @@ Il dataset fornito, denominato \texttt{customer.csv}, contiene informazioni rela
 
 \subsection{Struttura del Dataset}
 
-Il file è composto da \textbf{29 colonne}. Le principali utilizzate nel progetto sono:
+Il file \`e composto da \textbf{29 colonne}. Le principali utilizzate nel progetto sono:
 
 \begin{table}[H]
     \centering
@@ -171,23 +171,23 @@ Il file è composto da \textbf{29 colonne}. Le principali utilizzate nel progett
         \hline
         19 & NumWebVisitsMonth & Numero di visite web mensili \\
         \hline
-        28 & Response & Risposta all'ultima campagna (1=Sì, 0=No) \\
+        28 & Response & Risposta all'ultima campagna (1=S\`i, 0=No) \\
         \hline
     \end{tabular}
     \caption{Colonne principali del dataset customer.csv}
     \label{tab:dataset}
 \end{table}
 
-Il file è in formato CSV con separatore virgola (\texttt{,}). La prima riga contiene l'intestazione (header) che viene ignorata durante l'elaborazione.
+Il file \`e in formato CSV con separatore virgola (\texttt{,}). La prima riga contiene l'intestazione (header) che viene ignorata durante l'elaborazione.
 
 %-----------------------------------------------------------------------------
 \section{Ambiente Docker}
 
-Per l'esecuzione del progetto è stato utilizzato un ambiente distribuito tramite \textbf{Docker}, che consente di simulare un cluster Hadoop/Spark in locale.
+Per l'esecuzione del progetto \`e stato utilizzato un ambiente distribuito tramite \textbf{Docker}, che consente di simulare un cluster Hadoop/Spark in locale.
 
 \subsection{Configurazione del Cluster}
 
-Il cluster è basato su un'\textbf{immagine Docker personalizzata} (\texttt{hadoop-new}), costruita tramite Dockerfile a partire da Ubuntu con Java 8 e Hadoop 3.3.6. La stessa immagine viene utilizzata per tutti i nodi.
+Il cluster \`e basato su un'\textbf{immagine Docker personalizzata} (\texttt{hadoop-new}), costruita tramite Dockerfile a partire da Ubuntu con Java 8 e Hadoop 3.3.6. La stessa immagine viene utilizzata per tutti i nodi.
 
 La configurazione si compone dei seguenti container:
 
@@ -198,9 +198,9 @@ La configurazione si compone dei seguenti container:
     \item \textbf{slave3}: nodo worker con DataNode e NodeManager
 \end{itemize}
 
-I nodi comunicano tra loro tramite SSH (configurato senza password) su una rete bridge Docker (\texttt{hadoop\_network}). Il file \texttt{config/core-site.xml} configura il filesystem HDFS su \texttt{hdfs://master:54310}, mentre \texttt{config/workers} elenca i tre nodi slave. Il fattore di replica HDFS è impostato a 2 in \texttt{config/hdfs-site.xml}.
+I nodi comunicano tra loro tramite SSH (configurato senza password) su una rete bridge Docker (\texttt{hadoop\_network}). Il file \texttt{config/core-site.xml} configura il filesystem HDFS su \texttt{hdfs://master:54310}, mentre \texttt{config/workers} elenca i tre nodi slave. Il fattore di replica HDFS \`e impostato a 2 in \texttt{config/hdfs-site.xml}.
 
-Dopo l'avvio dei container, è necessario formattare HDFS (\texttt{hdfs namenode -format}) e avviare manualmente i servizi con \texttt{start-dfs.sh} e \texttt{start-yarn.sh} dal container master.
+Dopo l'avvio dei container, \`e necessario formattare HDFS (\texttt{hdfs namenode -format}) e avviare manualmente i servizi con \texttt{start-dfs.sh} e \texttt{start-yarn.sh} dal container master.
 
 \subsection{Volumi e Percorsi}
 
@@ -221,11 +221,11 @@ Il volume \texttt{hddata} viene montato nel container master come \texttt{/data}
 
 \section{Problema Affrontato}
 
-L'obiettivo dell'esercizio è calcolare la \textbf{spesa totale} dei clienti per ogni \textbf{livello di istruzione} e produrre una \textbf{classifica ordinata in modo decrescente} per spesa.
+L'obiettivo dell'esercizio \`e calcolare la \textbf{spesa totale} dei clienti per ogni \textbf{livello di istruzione} e individuare i \textbf{Top-3 livelli di istruzione} con la spesa pi\`u alta.
 
 \subsection{Definizione della Spesa Totale}
 
-Per ogni cliente, la spesa totale è calcolata come la somma delle seguenti colonne:
+Per ogni cliente, la spesa totale \`e calcolata come la somma delle seguenti colonne:
 
 \begin{equation}
     \text{SpesaTotale} = \text{MntWines} + \text{MntFruits} + \text{MntMeatProducts} + \text{MntFishProducts} + \text{MntSweetProducts} + \text{MntGoldProds}
@@ -241,7 +241,7 @@ La soluzione prevede una \textbf{pipeline di 2 Job MapReduce} in sequenza, orche
 \begin{tcolorbox}[colback=blue!5,colframe=blue!40!black,title=Pattern Utilizzati]
 \begin{itemize}
     \item \textbf{Summarization Pattern}: aggregazione con Combiner per ottimizzare il trasferimento dati
-    \item \textbf{Value-to-Key Conversion}: per ottenere l'ordinamento decrescente
+    \item \textbf{Top-K Pattern}: selezione dei K elementi con valore massimo tramite TreeMap
     \item \textbf{Job Chaining}: concatenamento di job sequenziali
 \end{itemize}
 \end{tcolorbox}
@@ -287,7 +287,7 @@ La stessa classe viene utilizzata sia come \textbf{Combiner} che come \textbf{Re
     \item \textbf{Come Reducer}: esegue la somma finale di tutti i valori per ogni chiave
 \end{itemize}
 
-Questa ottimizzazione è possibile perché l'operazione di somma è \textbf{associativa} e \textbf{commutativa}.
+Questa ottimizzazione \`e possibile perch\'e l'operazione di somma \`e \textbf{associativa} e \textbf{commutativa}.
 
 \begin{lstlisting}[caption=Logica del SumReducer]
 // Per ogni Education, somma tutte le spese
@@ -300,47 +300,70 @@ context.write(key, new DoubleWritable(sum));
 
 \subsection{Output del Job 1}
 
-L'output è nel formato:
+L'output \`e nel formato:
 \begin{verbatim}
 Education    SpesaTotale
 \end{verbatim}
 
 %-----------------------------------------------------------------------------
-\section{Job 2: Ordinamento Decrescente}
+\section{Job 2: Top-K (K=3)}
 
-Il secondo job ordina i risultati in modo \textbf{decrescente} per spesa totale.
+Il secondo job seleziona i \textbf{Top-3 livelli di istruzione} con la spesa pi\`u alta, utilizzando il \textbf{pattern Top-K} con una \texttt{TreeMap}.
 
-\subsection{Tecnica: Value-to-Key Conversion}
+\subsection{Tecnica: Top-K con TreeMap}
 
-Hadoop ordina automaticamente le chiavi in modo \textbf{crescente}. Per ottenere un ordinamento decrescente, si utilizza il trucco della \textbf{chiave negativa}:
+Il pattern Top-K consente di estrarre i K elementi con valore massimo da un dataset in modo efficiente:
 
 \begin{enumerate}
-    \item Il Mapper inverte chiave e valore, emettendo \texttt{(-SpesaTotale, Education)}
-    \item Hadoop ordina per chiave: $-1000 < -500 < -100$
-    \item Questo corrisponde a: $1000 > 500 > 100$ (decrescente!)
-    \item Il Reducer riconverte la spesa in positivo
+    \item Ogni Mapper mantiene una \texttt{TreeMap} locale ordinata per spesa (crescente)
+    \item Quando la TreeMap supera K elementi, viene rimosso quello con spesa \textbf{minore} (\texttt{firstKey})
+    \item In \texttt{cleanup()}, il Mapper emette solo i K record locali (riduce il traffico shuffle)
+    \item Il Reducer unisce i Top-K parziali di tutti i mapper in una TreeMap globale
+    \item In \texttt{cleanup()}, il Reducer emette i Top-K globali in ordine decrescente (\texttt{descendingMap})
 \end{enumerate}
 
-\subsection{Mapper (SortMapper)}
+Questo approccio \`e pi\`u efficiente dell'ordinamento completo perch\'e trasferisce al massimo $K \times M$ record (dove $M$ \`e il numero di mapper), invece di tutti i record.
 
-\begin{lstlisting}[caption=Logica del SortMapper]
-// Legge output del Job 1: "Education\tSpesaTotale"
+\subsection{Mapper (TopKMapper)}
+
+\begin{lstlisting}[caption=Logica del TopKMapper]
+private static final int K = 3;
+private TreeMap<Double, String> topK = new TreeMap<>();
+
+// map(): inserisce nella TreeMap locale
 String[] parts = line.split("\t");
 String education = parts[0];
 double spending = Double.parseDouble(parts[1]);
 
-// Emette spesa NEGATIVA come chiave per ordinamento decrescente
-context.write(new DoubleWritable(-spending), new Text(education));
+topK.put(spending, education);
+if (topK.size() > K) {
+    topK.remove(topK.firstKey());  // Rimuovi spesa minore
+}
+
+// cleanup(): emette i Top-K locali
+for (Map.Entry<Double, String> entry : topK.entrySet()) {
+    context.write(new DoubleWritable(entry.getKey()),
+                  new Text(entry.getValue()));
+}
 \end{lstlisting}
 
-\subsection{Reducer (SortReducer)}
+\subsection{Reducer (TopKReducer)}
 
-\begin{lstlisting}[caption=Logica del SortReducer]
-// Riconverte la spesa da negativa a positiva
-double spending = -key.get();
+\begin{lstlisting}[caption=Logica del TopKReducer]
+private static final int K = 3;
+private TreeMap<Double, String> topK = new TreeMap<>();
 
-for (Text education : values) {
-    context.write(education, new DoubleWritable(spending));
+// reduce(): unisce i Top-K parziali
+topK.put(key.get(), education.toString());
+if (topK.size() > K) {
+    topK.remove(topK.firstKey());
+}
+
+// cleanup(): emette in ordine DECRESCENTE
+NavigableMap<Double, String> desc = topK.descendingMap();
+for (Map.Entry<Double, String> entry : desc.entrySet()) {
+    context.write(new Text(entry.getValue()),
+                  new DoubleWritable(entry.getKey()));
 }
 \end{lstlisting}
 
@@ -360,13 +383,13 @@ for (Text education : values) {
     \\
     $\downarrow$\\
     \\
-    \textbf{Job 2: Ordinamento}\\
-    \texttt{SortMapper} $\rightarrow$ \texttt{SortReducer}\\
-    Output: \texttt{(Education, SpesaTotale)} ordinato decrescente\\
+    \textbf{Job 2: Top-K (K=3)}\\
+    \texttt{TopKMapper} $\rightarrow$ \texttt{TopKReducer}\\
+    Output: \texttt{(Education, SpesaTotale)} Top-3 ordinato decrescente\\
     \\
     $\downarrow$\\
     \\
-    \textbf{Output Finale} $\rightarrow$ Classifica per spesa
+    \textbf{Output Finale} $\rightarrow$ Top-3 livelli di istruzione per spesa
     \end{tcolorbox}
     \caption{Pipeline MapReduce}
 \end{figure}
@@ -382,18 +405,14 @@ L'esecuzione del job MapReduce ha prodotto i seguenti risultati:
         \hline
         \textbf{Livello di Istruzione} & \textbf{Spesa Totale (\$)} & \textbf{Posizione} \\
         \hline
-        Graduation & 698,626.00 & 1° \\
+        Graduation & 698,626.00 & 1\textdegree \\
         \hline
-        PhD & 326,791.00 & 2° \\
+        PhD & 326,791.00 & 2\textdegree \\
         \hline
-        Master & 226,359.00 & 3° \\
-        \hline
-        2n Cycle & 100,795.00 & 4° \\
-        \hline
-        Basic & 4,417.00 & 5° \\
+        Master & 226,359.00 & 3\textdegree \\
         \hline
     \end{tabular}
-    \caption{Classifica spesa totale per livello di istruzione}
+    \caption{Top-3 livelli di istruzione per spesa totale}
     \label{tab:risultati_mr}
 \end{table}
 
@@ -402,7 +421,8 @@ L'esecuzione del job MapReduce ha prodotto i seguenti risultati:
 \begin{itemize}
     \item I clienti con laurea triennale (\textbf{Graduation}) rappresentano il gruppo con la spesa maggiore, pari a \textbf{\$698,626}
     \item I clienti con dottorato (\textbf{PhD}) si posizionano al secondo posto con \textbf{\$326,791}
-    \item I clienti con istruzione di base (\textbf{Basic}) hanno la spesa più bassa (\textbf{\$4,417}), probabilmente per il numero ridotto di clienti in questa categoria
+    \item I clienti con master (\textbf{Master}) completano il podio con \textbf{\$226,359}
+    \item I restanti livelli (2n Cycle e Basic) vengono esclusi dal Top-3 per via della spesa inferiore
 \end{itemize}
 
 %=============================================================================
@@ -412,7 +432,7 @@ L'esecuzione del job MapReduce ha prodotto i seguenti risultati:
 
 \section{Problema Affrontato}
 
-L'obiettivo dell'esercizio è analizzare il \textbf{Web Conversion Rate} (tasso di conversione web) dei clienti che hanno risposto positivamente all'ultima campagna marketing (\texttt{Response = 1}), raggruppati per \textbf{anno di iscrizione}.
+L'obiettivo dell'esercizio \`e analizzare il \textbf{Web Conversion Rate} (tasso di conversione web) dei clienti che hanno risposto positivamente all'ultima campagna marketing (\texttt{Response = 1}), raggruppati per \textbf{anno di iscrizione}.
 
 \subsection{Definizione del Web Conversion Rate}
 
@@ -428,7 +448,7 @@ Dove:
     \item \textbf{NumWebVisitsMonth}: numero di visite al sito web nell'ultimo mese
 \end{itemize}
 
-Un tasso $> 1$ indica che il cliente effettua più acquisti che visite (acquisti multipli per sessione).
+Un tasso $> 1$ indica che il cliente effettua pi\`u acquisti che visite (acquisti multipli per sessione).
 
 %-----------------------------------------------------------------------------
 \section{Soluzione Proposta}
@@ -541,13 +561,13 @@ L'esecuzione del job Spark ha prodotto i seguenti risultati:
 \begin{itemize}
     \item \textbf{Anno 2012 (85.18\%)}: I clienti iscritti nel 2012 convertono circa 85 visite su 100 in acquisti. Questo indica un buon tasso di conversione ma con margine di miglioramento.
     
-    \item \textbf{Anno 2013 (106.64\%)}: Tasso superiore al 100\%, indica che i clienti effettuano \textbf{più acquisti che visite}. Questo suggerisce acquisti multipli per sessione o acquisti tramite altri canali tracciati come web.
+    \item \textbf{Anno 2013 (106.64\%)}: Tasso superiore al 100\%, indica che i clienti effettuano \textbf{pi\`u acquisti che visite}. Questo suggerisce acquisti multipli per sessione o acquisti tramite altri canali tracciati come web.
     
     \item \textbf{Anno 2014 (100.00\%)}: Conversione perfetta 1:1, ogni visita genera esattamente un acquisto.
 \end{itemize}
 
 \begin{tcolorbox}[colback=yellow!10,colframe=yellow!50!black,title=Nota Importante]
-I dati mostrano che i clienti più "anziani" (2012) hanno un conversion rate leggermente inferiore, mentre i clienti iscritti successivamente mostrano tassi migliori. Questo potrebbe indicare un miglioramento dell'esperienza utente del sito web nel tempo.
+I dati mostrano che i clienti pi\`u ``anziani'' (2012) hanno un conversion rate leggermente inferiore, mentre i clienti iscritti successivamente mostrano tassi migliori. Questo potrebbe indicare un miglioramento dell'esperienza utente del sito web nel tempo.
 \end{tcolorbox}
 
 %=============================================================================
@@ -656,13 +676,13 @@ chmod +x scripts/run_spark_local.sh
         \hline
         Paradigma & Batch, disk-based & In-memory \\
         \hline
-        Velocità & Più lento & Più veloce (10-100x) \\
+        Velocit\`a & Pi\`u lento & Pi\`u veloce (10-100x) \\
         \hline
         API & Basso livello & Alto livello (RDD, DataFrame) \\
         \hline
         Fault tolerance & Replica su disco & Lineage RDD \\
         \hline
-        Complessità codice & Più verbose & Più conciso \\
+        Complessit\`a codice & Pi\`u verbose & Pi\`u conciso \\
         \hline
         Ottimizzazioni & Combiner manuale & Automatiche \\
         \hline
@@ -675,7 +695,7 @@ chmod +x scripts/run_spark_local.sh
 Il progetto ha permesso di:
 
 \begin{enumerate}
-    \item Implementare una \textbf{pipeline MapReduce} con job chaining, utilizzando pattern come Summarization e Value-to-Key Conversion
+    \item Implementare una \textbf{pipeline MapReduce} con job chaining, utilizzando pattern come Summarization e Top-K
     
     \item Sviluppare un'applicazione \textbf{Spark} con RDD API, sfruttando trasformazioni funzionali come \texttt{mapToPair}, \texttt{reduceByKey} e \texttt{filter}
     
@@ -687,9 +707,9 @@ Il progetto ha permesso di:
 \subsection{Risultati Chiave}
 
 \begin{itemize}
-    \item \textbf{MapReduce}: I clienti con laurea (Graduation) sono i maggiori spendenti con \$698,626 di spesa totale
+    \item \textbf{MapReduce}: Il Top-3 rivela che Graduation (\$698,626), PhD (\$326,791) e Master (\$226,359) sono i livelli di istruzione con la spesa pi\`u alta
     
-    \item \textbf{Spark}: Il Web Conversion Rate migliore è nel 2013 (106.64\%), indicando un'alta efficacia delle campagne marketing per i clienti iscritti in quell'anno
+    \item \textbf{Spark}: Il Web Conversion Rate migliore \`e nel 2013 (106.64\%), indicando un'alta efficacia delle campagne marketing per i clienti iscritti in quell'anno
 \end{itemize}
 
 \end{document}

@@ -19,12 +19,13 @@
  * ---------------------------------------------------------------------------
  * ESERCIZIO 1 - HADOOP MAPREDUCE
  * ---------------------------------------------------------------------------
- * Titolo: Classifica dei livelli di istruzione per spesa totale
+ * Titolo: Top-3 livelli di istruzione per spesa totale
  * 
  * Descrizione:
  *   Questo programma analizza il dataset customer.csv per calcolare la spesa
  *   totale dei clienti raggruppati per livello di istruzione (Education).
- *   L'output finale è una classifica ordinata in modo decrescente per spesa.
+ *   L'output finale sono i Top-3 livelli di istruzione con la spesa più alta,
+ *   ordinati in modo decrescente.
  * 
  * Dataset: customer.csv (2240 righe, 29 colonne)
  * 
@@ -32,12 +33,12 @@
  *   - Job 1 (Aggregazione): Somma le spese (Wines, Fruits, Meat, Fish, Sweets,
  *     Gold) per ogni livello di istruzione. Utilizza un Combiner per 
  *     ottimizzare il trasferimento dati nella fase di shuffle.
- *   - Job 2 (Ordinamento): Ordina i risultati in modo decrescente usando
- *     il pattern "Value-to-Key Conversion" con chiave negativa.
+ *   - Job 2 (Top-K): Seleziona i Top-3 livelli di istruzione con la spesa
+ *     più alta utilizzando una TreeMap nel Mapper e nel Reducer.
  * 
  * Pattern utilizzati:
  *   - Summarization Pattern (aggregazione con Combiner)
- *   - Value-to-Key Conversion (per ordinamento decrescente)
+ *   - Top-K Pattern (selezione dei K elementi con valore massimo)
  *   - Job Chaining (concatenamento di due job)
  * 
  * ===========================================================================
@@ -59,7 +60,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
  * Driver principale che orchestra l'esecuzione dei due job MapReduce.
  * 
  * Job 1: Aggregazione - calcola la somma delle spese per livello di istruzione
- * Job 2: Ordinamento - ordina i risultati in modo decrescente per spesa totale
+ * Job 2: Top-K - seleziona i Top-3 livelli con spesa più alta
  */
 public class CustomerDriver {
 
@@ -135,19 +136,19 @@ public class CustomerDriver {
         System.out.println("========== JOB 1 COMPLETATO ==========\n");
 
         // =====================================================================
-        // JOB 2: ORDINAMENTO - Ranking decrescente per spesa
+        // JOB 2: TOP-K - Selezione dei Top-3 per spesa
         // =====================================================================
-        System.out.println("========== AVVIO JOB 2: Ordinamento ==========");
+        System.out.println("========== AVVIO JOB 2: Top-K (K=3) ==========");
         
-        Job job2 = Job.getInstance(conf, "Job2_Ranking_Decrescente");
+        Job job2 = Job.getInstance(conf, "Job2_TopK_Spesa");
         job2.setJarByClass(CustomerDriver.class);
         
         // Configurazione Mapper e Reducer
-        job2.setMapperClass(SortMapper.class);
-        job2.setReducerClass(SortReducer.class);
+        job2.setMapperClass(TopKMapper.class);
+        job2.setReducerClass(TopKReducer.class);
         
-        // NOTA: Nel Job 2, il Mapper emette (DoubleWritable, Text)
-        // mentre il Reducer emette (Text, DoubleWritable)
+        // Il Mapper emette (DoubleWritable, Text)
+        // Il Reducer emette (Text, DoubleWritable)
         job2.setMapOutputKeyClass(DoubleWritable.class);
         job2.setMapOutputValueClass(Text.class);
         job2.setOutputKeyClass(Text.class);
@@ -161,7 +162,7 @@ public class CustomerDriver {
         FileInputFormat.addInputPath(job2, tempPath);
         FileOutputFormat.setOutputPath(job2, finalPath);
         
-        // Un solo reducer per garantire ordinamento globale
+        // Un solo reducer per garantire Top-K globale
         job2.setNumReduceTasks(1);
 
         // Esecuzione Job 2
