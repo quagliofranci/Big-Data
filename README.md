@@ -87,44 +87,7 @@ hddata/src/spark/
 
 ---
 
-## Struttura del Progetto
 
-```
-progetto_bigdata/
-├── Dockerfile                     # Immagine Docker hadoop-new
-├── docker-compose.yml             # Cluster: master + 3 slave
-├── config/                        # Configurazione Hadoop
-│   ├── core-site.xml
-│   ├── hdfs-site.xml
-│   ├── workers
-│   ├── hadoop-env.sh
-│   ├── bootstrap.sh
-│   └── ssh_config
-├── ISTRUZIONI_TERMINALE.txt       # Comandi di esecuzione
-├── documentation/
-│   └── report.tex                 # Report LaTeX
-└── hddata/
-    ├── dataset/
-    │   └── customer.csv
-    ├── src/
-    │   ├── mapreduce/
-    │   │   ├── CustomerDriver.java
-    │   │   ├── SumMapper.java
-    │   │   ├── SumReducer.java
-    │   │   ├── TopKMapper.java
-    │   │   └── TopKReducer.java
-    │   └── spark/
-    │       └── SparkDriver.java
-    ├── scripts/
-    │   ├── run_mapreduce.sh
-    │   ├── run_spark_local.sh
-    │   └── run_spark_cluster.sh
-    ├── spark_libs/                 # Librerie Spark (JAR)
-    ├── CustomerSpending.jar        # JAR MapReduce
-    ├── CustomerSpark.jar           # JAR Spark
-    ├── output_mapreduce/           # Output MapReduce
-    └── output_spark/               # Output Spark
-```
 
 ---
 
